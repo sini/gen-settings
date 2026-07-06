@@ -29,7 +29,10 @@ let
     aspect = fx.aspects.terminal;
     fields = {
       font = {
-        default = ref theme [ "font" "mono" ];
+        default = ref theme [
+          "font"
+          "mono"
+        ];
       };
     };
   };

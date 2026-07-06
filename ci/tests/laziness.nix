@@ -34,7 +34,14 @@ let
   };
   res2 = resolveOne {
     schema = schema2;
-    layers = [ (fx.mkLayer { value = { a = "va"; b = throw "b forced"; }; }) ];
+    layers = [
+      (fx.mkLayer {
+        value = {
+          a = "va";
+          b = throw "b forced";
+        };
+      })
+    ];
   };
 
   # ── L15.2: a provenance-only consumer of `a` doesn't force `b`'s ref substitution ──
@@ -71,18 +78,28 @@ let
   # `b` is append-strategy with a WHNF-fine but un-append-able contribution (an int): the graph scan
   # forces it to WHNF (fine), but folding `[] ++ 42` throws only if `b` is read. Reading `a` doesn't.
   batchUnfolded = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        a = {
-          default = "da";
+    (member
+      (mkSchema {
+        aspect = theme;
+        fields = {
+          a = {
+            default = "da";
+          };
+          b = {
+            default = [ ];
+            merge = "append";
+          };
         };
-        b = {
-          default = [ ];
-          merge = "append";
-        };
-      };
-    }) [ (fx.mkLayer { value = { a = "va"; b = 42; }; }) ])
+      })
+      [
+        (fx.mkLayer {
+          value = {
+            a = "va";
+            b = 42;
+          };
+        })
+      ]
+    )
   ];
   resUnfolded = resolveAll { batch = batchUnfolded; };
 

@@ -24,13 +24,22 @@ let
       };
     };
   };
-  fwSettings = (resolveOne {
-    schema = fwSchema;
-    layers = [
-      (fx.mkLayer { value = { "allowed-tcp" = [ 80 ]; }; })
-      (fx.mkLayer { value = { "allowed-tcp" = [ 443 ]; }; })
-    ];
-  }).value;
+  fwSettings =
+    (resolveOne {
+      schema = fwSchema;
+      layers = [
+        (fx.mkLayer {
+          value = {
+            "allowed-tcp" = [ 80 ];
+          };
+        })
+        (fx.mkLayer {
+          value = {
+            "allowed-tcp" = [ 443 ];
+          };
+        })
+      ];
+    }).value;
   expectedPorts = [
     22
     80
@@ -52,7 +61,12 @@ let
 
   evalPortsOf =
     module:
-    (lib.evalModules { modules = [ fwOpts module ]; }).config.networking.firewall.allowedTCPPorts;
+    (lib.evalModules {
+      modules = [
+        fwOpts
+        module
+      ];
+    }).config.networking.firewall.allowedTCPPorts;
 
   injFn = injectAspectSettings {
     aspect = fx.aspects.firewall;
@@ -95,13 +109,14 @@ let
     classContent = mkDefFn;
     settings = fwSettings;
   };
-  valEval = (lib.evalModules {
-    modules = [
-      valOpts
-      injMkDef.module
-      { config.val = 9; }
-    ];
-  }).config.val;
+  valEval =
+    (lib.evalModules {
+      modules = [
+        valOpts
+        injMkDef.module
+        { config.val = 9; }
+      ];
+    }).config.val;
 
   # bindWins: an injected `host` binding shadows a stray same-named module arg.
   hostOpts = {
@@ -123,12 +138,13 @@ let
       host = fx.entities.axon;
     };
   };
-  hostEval = (lib.evalModules {
-    modules = [
-      hostOpts
-      injBindWins.module
-    ];
-  }).config.hostName;
+  hostEval =
+    (lib.evalModules {
+      modules = [
+        hostOpts
+        injBindWins.module
+      ];
+    }).config.hostName;
 
   # Second aspect (nginx-style): scalar + recursive, proving non-specificity to one aspect.
   nginxSchema = mkSchema {
@@ -145,10 +161,17 @@ let
       };
     };
   };
-  nginxSettings = (resolveOne {
-    schema = nginxSchema;
-    layers = [ (fx.mkLayer { value = { worker = 4; }; }) ];
-  }).value;
+  nginxSettings =
+    (resolveOne {
+      schema = nginxSchema;
+      layers = [
+        (fx.mkLayer {
+          value = {
+            worker = 4;
+          };
+        })
+      ];
+    }).value;
   nginxOpts = {
     options.workers = lib.mkOption {
       type = lib.types.int;
@@ -164,12 +187,13 @@ let
       };
     settings = nginxSettings;
   };
-  nginxEval = (lib.evalModules {
-    modules = [
-      nginxOpts
-      injNginx.module
-    ];
-  }).config.workers;
+  nginxEval =
+    (lib.evalModules {
+      modules = [
+        nginxOpts
+        injNginx.module
+      ];
+    }).config.workers;
 in
 {
   flake.tests.injection-wrap = {

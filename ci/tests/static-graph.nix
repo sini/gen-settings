@@ -21,14 +21,16 @@ let
   inherit (fx.aspects) theme terminal firewall;
 
   member = schema: layers: { inherit schema layers; };
-  onlyDefault = aspect: field: value: member (mkSchema {
-    inherit aspect;
-    fields = {
-      ${field} = {
-        default = value;
+  onlyDefault =
+    aspect: field: value:
+    member (mkSchema {
+      inherit aspect;
+      fields = {
+        ${field} = {
+          default = value;
+        };
       };
-    };
-  }) [ ];
+    }) [ ];
 
   # ── 2-cycle: theme.f -> terminal.g -> theme.f ──
   batch2 = [
@@ -77,31 +79,51 @@ let
 
   # ── L17a: cycle whose theme.f ref lives in a DEFAULT shadowed by a replace layer ──
   batchShadowedCycle = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = ref terminal [ "g" ];
+    (member
+      (mkSchema {
+        aspect = theme;
+        fields = {
+          f = {
+            default = ref terminal [ "g" ];
+          };
         };
-      };
-    }) [ (fx.mkLayer { value = { f = "concrete"; }; }) ])
+      })
+      [
+        (fx.mkLayer {
+          value = {
+            f = "concrete";
+          };
+        })
+      ]
+    )
     (onlyDefault terminal "g" (ref theme [ "f" ]))
   ];
   graphShadowedCycle = refGraph batchShadowedCycle;
 
   # ── L17b: a throwing scalar in a shadowed contribution of an unread-under-replace field ──
   batchThrow = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        x = {
-          default = "d";
+    (member
+      (mkSchema {
+        aspect = theme;
+        fields = {
+          x = {
+            default = "d";
+          };
         };
-      };
-    }) [
-      (fx.mkLayer { value = { x = throw "boom"; }; })
-      (fx.mkLayer { value = { x = "win"; }; })
-    ])
+      })
+      [
+        (fx.mkLayer {
+          value = {
+            x = throw "boom";
+          };
+        })
+        (fx.mkLayer {
+          value = {
+            x = "win";
+          };
+        })
+      ]
+    )
   ];
 
   # E3 rendering, recomputed from the graph's cycle data exactly as assertAcyclic renders it.
@@ -175,7 +197,8 @@ in
     };
     test-conservative-shadowed-cycle-throws = {
       expr =
-        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchShadowedCycle; }).value true)).success;
+        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchShadowedCycle; }).value true))
+        .success;
       expected = false;
     };
 
@@ -192,7 +215,8 @@ in
 
     # L17b — a throwing scalar in any (shadowed, unread-under-replace) contribution throws at force.
     test-structural-strictness-throw = {
-      expr = (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchThrow; }).value true)).success;
+      expr =
+        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchThrow; }).value true)).success;
       expected = false;
     };
   };

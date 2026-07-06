@@ -74,7 +74,10 @@ let
         rendered = "host";
         value = {
           cfg = {
-            k = ref theme [ "font" "mono" ];
+            k = ref theme [
+              "font"
+              "mono"
+            ];
           };
         };
       })

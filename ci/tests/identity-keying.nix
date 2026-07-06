@@ -17,17 +17,18 @@ let
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   throws = e: (builtins.tryEval (builtins.deepSeq e e)).success == false;
 
-  fwSettings = (resolveOne {
-    schema = mkSchema {
-      aspect = fx.aspects.firewall;
-      fields = {
-        "allowed-tcp" = {
-          default = [ 22 ];
+  fwSettings =
+    (resolveOne {
+      schema = mkSchema {
+        aspect = fx.aspects.firewall;
+        fields = {
+          "allowed-tcp" = {
+            default = [ 22 ];
+          };
         };
       };
-    };
-    layers = [ ];
-  }).value;
+      layers = [ ];
+    }).value;
 
   markContent =
     { settings, host, ... }:
@@ -64,8 +65,7 @@ let
 
   markersOf =
     modules:
-    lib.sort lib.lessThan
-      (lib.evalModules { modules = [ markOpts ] ++ modules; }).config.markers;
+    lib.sort lib.lessThan (lib.evalModules { modules = [ markOpts ] ++ modules; }).config.markers;
 
   # E8 — two aspects colliding on one settingsKey.
   e8Call = assembleHost {

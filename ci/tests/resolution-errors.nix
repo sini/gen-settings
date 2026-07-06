@@ -26,14 +26,16 @@ let
   member = schema: layers: { inherit schema layers; };
 
   # E4 — target aspect absent from the batch.
-  batchE4 = [ (member (mkSchema {
-    aspect = theme;
-    fields = {
-      f = {
-        default = ref fx.aspects.absent [ "x" ];
+  batchE4 = [
+    (member (mkSchema {
+      aspect = theme;
+      fields = {
+        f = {
+          default = ref fx.aspects.absent [ "x" ];
+        };
       };
-    };
-  }) [ ]) ];
+    }) [ ])
+  ];
 
   # E5 — target present, path component absent in its resolved value.
   batchE5 = [
@@ -57,22 +59,32 @@ let
 
   # E7 — duplicate batch key.
   batchE7 = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = 1;
+    (
+      member (mkSchema {
+        aspect = theme;
+        fields = {
+          f = {
+            default = 1;
+          };
         };
-      };
-    }) [ ] // { key = "dup"; })
-    (member (mkSchema {
-      aspect = terminal;
-      fields = {
-        g = {
-          default = 2;
+      }) [ ]
+      // {
+        key = "dup";
+      }
+    )
+    (
+      member (mkSchema {
+        aspect = terminal;
+        fields = {
+          g = {
+            default = 2;
+          };
         };
-      };
-    }) [ ] // { key = "dup"; })
+      }) [ ]
+      // {
+        key = "dup";
+      }
+    )
   ];
 
   # E2 — strict-mode undeclared contribution (non-throwing value: attr-name-level detection).
@@ -86,7 +98,13 @@ let
       };
     };
     strict = true;
-    layers = [ (fx.mkLayer { value = { extra = "u"; }; }) ];
+    layers = [
+      (fx.mkLayer {
+        value = {
+          extra = "u";
+        };
+      })
+    ];
   };
 in
 {
