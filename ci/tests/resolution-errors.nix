@@ -106,6 +106,29 @@ let
       })
     ];
   };
+
+  # E2 — same undeclared contribution, but its VALUE is a throw. The strict scan is attr-name-level
+  # (resolve.nix reads `attrNames l.value`, the key names, never the values), so E2 fires on the
+  # undeclared key `extra` without ever forcing its (throwing) value — the throwing value does not
+  # preempt E2. Were the scan value-level, forcing the result would surface `boom` instead.
+  resE2Throwing = resolveOne {
+    schema = mkSchema {
+      aspect = theme;
+      fields = {
+        f = {
+          default = "d";
+        };
+      };
+    };
+    strict = true;
+    layers = [
+      (fx.mkLayer {
+        value = {
+          extra = throw "boom";
+        };
+      })
+    ];
+  };
 in
 {
   flake.tests.resolution-errors = {
@@ -148,6 +171,11 @@ in
     # E2 — strict unknown field, at first force of the result.
     test-e2-strict-unknown = {
       expr = throws resE2.value;
+      expected = true;
+    };
+    # E2 — attr-name-level: a throwing contribution value does not preempt the strict scan.
+    test-e2-throwing-value = {
+      expr = throws resE2Throwing.value;
       expected = true;
     };
 
