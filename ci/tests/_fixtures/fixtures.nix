@@ -53,5 +53,12 @@ rec {
       via ? null,
       value,
     }:
-    { inherit scope rendered via value; };
+    {
+      inherit
+        scope
+        rendered
+        via
+        value
+        ;
+    };
 }

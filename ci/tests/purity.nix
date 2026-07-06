@@ -31,15 +31,16 @@ let
       name = toString p;
       code = stripComments (builtins.readFile p);
     }) (walk libDir)
-    ++ map
-      (rel: {
-        name = rel;
-        code = stripComments (builtins.readFile (../.. + "/${rel}"));
-      })
-      [
-        "flake.nix"
-        "default.nix"
-      ];
+    ++
+      map
+        (rel: {
+          name = rel;
+          code = stripComments (builtins.readFile (../.. + "/${rel}"));
+        })
+        [
+          "flake.nix"
+          "default.nix"
+        ];
 
   forbidden = [
     "nixpkgs"
