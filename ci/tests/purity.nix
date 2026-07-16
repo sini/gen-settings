@@ -55,7 +55,8 @@ let
   ];
 
   violations = lib.concatMap (
-    src: map (tok: "${src.name}: '${tok}'") (lib.filter (tok: genPrelude.hasInfix tok src.code) forbidden)
+    src:
+    map (tok: "${src.name}: '${tok}'") (lib.filter (tok: genPrelude.hasInfix tok src.code) forbidden)
   ) sources;
 in
 {
