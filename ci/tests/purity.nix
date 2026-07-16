@@ -2,7 +2,7 @@
 # machinery is builtins + gen-prelude, plus the injected gen-algebra fold and gen-bind wrap; gen-schema
 # is consumed interface-only (the id_hash field), never imported. A stray `lib.`/`evalModules`/`nixpkgs`
 # tether in the library source fails CI. Scope: lib/**.nix + the root flake.nix + default.nix. NOT ci/.
-{ lib, ... }:
+{ genPrelude, lib, ... }:
 let
   libDir = ../../lib;
 
@@ -55,7 +55,7 @@ let
   ];
 
   violations = lib.concatMap (
-    src: map (tok: "${src.name}: '${tok}'") (lib.filter (tok: lib.hasInfix tok src.code) forbidden)
+    src: map (tok: "${src.name}: '${tok}'") (lib.filter (tok: genPrelude.hasInfix tok src.code) forbidden)
   ) sources;
 in
 {
