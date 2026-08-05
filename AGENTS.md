@@ -1,5 +1,9 @@
 # gen-settings — agent capability sheet
 
+> **Status (owner ruling, 2026-08-05): EXPERIMENTAL, subject to replacement.** Built by the original
+> den-hoag agent; likely to go through redesign. Do not build new long-lived dependencies on this
+> surface without checking the den-hoag tracker first.
+
 ## Scope
 
 Stratified settings resolution: folds a static `{ default; merge }` schema against a caller-supplied ordered layer list into `{ value; provenance; }`, adding refs-as-data (inert cross-aspect references with a static dependency graph) and the injection construct that hands the resolved value to parametric class content.
