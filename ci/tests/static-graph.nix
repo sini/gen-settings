@@ -49,6 +49,17 @@ let
     (onlyDefault firewall "h" (ref theme [ "f" ]))
   ];
 
+  # ── 3-cycle whose TRAVERSAL order and KEY order disagree: theme.f -> firewall.h ->
+  # terminal.g -> theme.f, while the node keys sort a1b2…:f < e5f6…:g < f1f2…:h. graph3 above
+  # cannot tell a traversal from a key-sorted set — its id_hashes happen to ascend along its
+  # traversal direction — so this fixture is what discriminates a cycle PATH from mere cycle
+  # MEMBERSHIP. Rendering a membership set with " -> " asserts edges the graph does not contain.
+  graph3Discriminating = refGraph [
+    (onlyDefault theme "f" (ref firewall [ "h" ]))
+    (onlyDefault firewall "h" (ref terminal [ "g" ]))
+    (onlyDefault terminal "g" (ref theme [ "f" ]))
+  ];
+
   # ── permissive (field-granular, NO cycle): theme.f -> terminal.g, terminal.h -> theme.k ──
   batchPermissive = [
     (member (mkSchema {
@@ -180,6 +191,19 @@ in
       expr = renderCycle (lib.head graph2.cycles);
       expected = "aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
     };
+    # E3 message golden, DISCRIMINATING — the cycle is reported in traversal order, so every
+    # " -> " in the body is a real edge. A cycle finder that reports membership sorted by key
+    # renders `theme.f -> terminal.g` here, which is not an edge of this graph.
+    test-e3-message-golden-discriminating = {
+      expr = renderCycle (lib.head graph3Discriminating.cycles);
+      expected = "aspect(theme#a1b2c3d4).f -> aspect(firewall#f1f2f3f4).h -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
+    };
+    # ...and exactly one cycle is reported for the single component it forms.
+    test-e3-discriminating-single-cycle = {
+      expr = lib.length graph3Discriminating.cycles;
+      expected = 1;
+    };
+
     # assertAcyclic throws on a cyclic graph, is identity on an acyclic one.
     test-assertAcyclic-throws = {
       expr = (builtins.tryEval (assertAcyclic graph2)).success;
