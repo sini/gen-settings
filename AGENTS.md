@@ -148,7 +148,7 @@ Verified at `24a78e9` by evaluating against the flake's `lib` (`nix eval --impur
 | `renderAddress` truncates `id_hash` to 8 characters and is display-only | `lib/display.nix:shortHash`, `lib/display.nix:renderAddress`; from a 16-char hash ⇒ `aspect(theme#a1b2c3d4)`, `aspect(theme#a1b2c3d4).font`, `aspect(theme#a1b2c3d4).font.mono.x` |
 | A duplicate batch `key` is E7 at first force of `.value` | `lib/resolve.nix:resolveAll` (`gate`); two members with `key = "k"` ⇒ threw. Test: `test-e7-duplicate-key` (`ci/tests/resolution-errors.nix`) |
 | `mkSchema` with no fields is legal | `lib/schema.nix:mkSchema`; `fields = { }` ⇒ `{ aspect; defaults = { }; fields = { }; strategies = { }; }` |
-| The layer list is never sorted, deduped or filtered — order *is* authority | `git grep -n -E 'sort\|unique\|dedup' -- lib/resolve.nix` returns only the comment at `:149`; positive control `git grep -n -E 'sort' -- lib/graph.nix` ⇒ `:22`, `:73`. The ordering behaviour itself is pinned by `test-permute-flips-winner`, `test-duplicate-appends-twice`, `test-provenance-order-preserved` (`ci/tests/no-reordering.nix`) — read, not exercised in this run |
+| The layer list is never sorted, deduped or filtered — order *is* authority | `git grep -E 'sort\|unique\|dedup' -- lib/resolve.nix` returns one line, the comment *"no toposort needed or performed"*; positive control `git grep -c -E 'foldMember' -- lib/resolve.nix` ⇒ `3`. (Re-measured at `0bf16ab`; the rest of this table is dated `24a78e9`.) The ordering behaviour itself is pinned by `test-permute-flips-winner`, `test-duplicate-appends-twice`, `test-provenance-order-preserved` (`ci/tests/no-reordering.nix`) — read, not exercised in this run |
 
 ## Theory
 
