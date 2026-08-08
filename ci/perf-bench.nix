@@ -20,16 +20,35 @@
 # below. `nrFunctionCalls` is the reported figure because it is deterministic across runs;
 # `cpuTime` is noisy at this size and is read only as a sanity check, never quoted alone.
 #
-#   REPRODUCE (from a checkout of this repo; ARMS are two lib/ trees):
+#   REPRODUCE, the wired way. It drives this file over the current tree, checks both controls and
+#   gates on the growth condition below:
 #
-#     git worktree add /tmp/gs-incumbent <parent-rev>
-#     for arm in /tmp/gs-incumbent/lib ./lib; do
+#     nix run ./ci#perf-bench --override-input gen-graph /path/to/gen-graph
+#
+#   ★ The override is REQUIRED until gen-graph's `cyclePaths` is released and ci/flake.lock is
+#   bumped past it: this repo's `lib/` calls `cyclePaths`, and the currently locked gen-graph does
+#   not have it, so the unflagged command dies with `attribute 'cyclePaths' missing` before any
+#   row is produced. Note the failure is ASYMMETRIC — a pre-extraction `lib/` never reaches
+#   `cyclePaths`, so a baseline arm runs unflagged while the current arm does not. Once the lock
+#   is bumped the flag can go.
+#
+#   Point it at a second revision for the two-arm table:
+#
+#     git worktree add /tmp/gs-base <parent-rev>
+#     PERF_BASELINE_LIB=/tmp/gs-base/lib nix run ./ci#perf-bench --override-input gen-graph /path/to/gen-graph
+#
+#   REPRODUCE by hand. `srcs` entries are FILESYSTEM PATHS to each library's `lib/` directory —
+#   not `<name>` search-path lookups, which resolve only if you also pass a matching `-I` (bare
+#   `nix eval --impure --expr '<gen-prelude>'` fails with "not found in the Nix search path"):
+#
+#     GP=/path/to/gen-prelude/lib; GA=/path/to/gen-algebra/lib
+#     GB=/path/to/gen-bind/lib;    GG=/path/to/gen-graph/lib
+#     for arm in /tmp/gs-base/lib ./lib; do
 #       for n in 8 10 12 14 16; do
 #         NIX_SHOW_STATS=1 NIX_SHOW_STATS_PATH=/tmp/stats.json \
 #           nix eval --impure --json --expr "import ./ci/perf-bench.nix {
-#             srcs = { gen-settings = $arm; gen-prelude = <gen-prelude>/lib;
-#                      gen-algebra = <gen-algebra>/lib; gen-bind = <gen-bind>/lib;
-#                      gen-graph = <gen-graph>/lib; };
+#             srcs = { gen-settings = $arm; gen-prelude = $GP;
+#                      gen-algebra = $GA; gen-bind = $GB; gen-graph = $GG; };
 #             stack = \"acyclic\"; n = $n; }"
 #         jq .nrFunctionCalls /tmp/stats.json
 #       done
@@ -118,8 +137,10 @@ let
 in
 {
   nodes = builtins.length g.nodes;
-  # deepSeq forces the whole cycle computation — the thing being counted. Returning the count also
-  # makes the two arms comparable: a run in which the revisions disagree here is not a fair
-  # measurement of the same work.
+  # deepSeq forces the whole cycle computation — the thing being counted. Under `acyclic` the
+  # count is 0 on any correct revision, so two arms disagreeing THERE are not measuring the same
+  # work. Under `backedge` they may legitimately differ (a per-start-node contract reports one
+  # cycle per start, a per-component contract reports one per component); what the control
+  # requires there is only that both are NON-ZERO.
   cycles = builtins.deepSeq g.cycles (builtins.length g.cycles);
 }

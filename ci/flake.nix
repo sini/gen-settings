@@ -36,6 +36,8 @@
       inherit inputs;
       name = "gen-settings";
       testModules = ./tests;
+      # `nix run ./ci#perf-bench` — the driver for ci/perf-bench.nix.
+      extraModules = [ ./perf-bench-app.nix ];
       specialArgs = {
         inherit genSettings genAlgebra genBind;
       };
