@@ -18,7 +18,12 @@ let
     renderAddress
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
-  inherit (fx.aspects) theme terminal firewall;
+  inherit (fx.aspects)
+    theme
+    terminal
+    firewall
+    nginx
+    ;
 
   member = schema: layers: { inherit schema layers; };
   onlyDefault =
@@ -58,6 +63,37 @@ let
     (onlyDefault theme "f" (ref firewall [ "h" ]))
     (onlyDefault firewall "h" (ref terminal [ "g" ]))
     (onlyDefault terminal "g" (ref theme [ "f" ]))
+  ];
+
+  # ── figure-eight: ONE component holding TWO distinct simple cycles, theme.f -> terminal.g ->
+  # theme.f and theme.f -> firewall.h -> theme.f. The reported cycle is one REPRESENTATIVE per
+  # component, so the multiplicity here is 1 while the component's cycle count is 2. Its edge set
+  # is asserted below so the fixture cannot silently stop being a figure-eight.
+  graphFigureEight = refGraph [
+    (onlyDefault theme "f" [
+      (ref terminal [ "g" ])
+      (ref firewall [ "h" ])
+    ])
+    (onlyDefault terminal "g" (ref theme [ "f" ]))
+    (onlyDefault firewall "h" (ref theme [ "f" ]))
+  ];
+  # Edge set as "A.f -> B.g" strings — the structural premise that this IS a figure-eight.
+  edgeStrings =
+    g:
+    lib.sort lib.lessThan (
+      map (
+        e: "${e.from.aspect.name}.${e.from.field} -> ${e.to.aspect.name}.${e.to.field}"
+      ) g.edges
+    );
+
+  # ── two DISJOINT cyclic components: theme.f <-> terminal.g and firewall.h <-> nginx.k. This is
+  # the shape that reports more than one cycle, and therefore the only one that exercises
+  # assertAcyclic's "; " join between cycles.
+  graphDisjointCycles = refGraph [
+    (onlyDefault theme "f" (ref terminal [ "g" ]))
+    (onlyDefault terminal "g" (ref theme [ "f" ]))
+    (onlyDefault firewall "h" (ref nginx [ "k" ]))
+    (onlyDefault nginx "k" (ref firewall [ "h" ]))
   ];
 
   # ── permissive (field-granular, NO cycle): theme.f -> terminal.g, terminal.h -> theme.k ──
@@ -144,6 +180,9 @@ let
       addrs = map (a: renderAddress { inherit (a) aspect field; }) cyc;
     in
     lib.concatStringsSep " -> " (addrs ++ [ (lib.head addrs) ]);
+  # The whole E3 body, including the "; " join BETWEEN cycles — the only place multiplicity
+  # reaches the reader, and the reason a multi-cycle fixture is pinned at the message level.
+  renderCycles = g: lib.concatStringsSep "; " (map renderCycle g.cycles);
 
   cyclicBatch = batch2;
   forced = builtins.tryEval (builtins.deepSeq (resolveAll { batch = cyclicBatch; }).value true);
@@ -202,6 +241,43 @@ in
     test-e3-discriminating-single-cycle = {
       expr = lib.length graph3Discriminating.cycles;
       expected = 1;
+    };
+
+    # ── multiplicity, at the MESSAGE level ──
+    # PREMISE, asserted so the fixture cannot silently stop discriminating: these four edges are
+    # two distinct simple cycles sharing theme.f. If this goes red, the tests below are pinning
+    # something other than a figure-eight and prove nothing about multiplicity.
+    test-figure-eight-premise-two-cycles-one-component = {
+      expr = edgeStrings graphFigureEight;
+      expected = [
+        "firewall.h -> theme.f"
+        "terminal.g -> theme.f"
+        "theme.f -> firewall.h"
+        "theme.f -> terminal.g"
+      ];
+    };
+    # ...and the component reports ONE representative, not one per cycle. The contract is
+    # per-COMPONENT: the SCC is canonical, the cycle through it is existential.
+    test-figure-eight-one-representative = {
+      expr = lib.length graphFigureEight.cycles;
+      expected = 1;
+    };
+    # The E3 body for that component names a single traversable loop and carries NO "; ".
+    test-figure-eight-message-golden = {
+      expr = renderCycles graphFigureEight;
+      expected = "aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
+    };
+
+    # Two DISJOINT components are what produce multiplicity > 1, and this is the only fixture in
+    # the suite that renders the "; " join between cycles. Ordering is by component tag, so
+    # nginx#00112233 precedes theme#a1b2c3d4.
+    test-disjoint-cycles-multiplicity = {
+      expr = lib.length graphDisjointCycles.cycles;
+      expected = 2;
+    };
+    test-disjoint-cycles-message-golden = {
+      expr = renderCycles graphDisjointCycles;
+      expected = "aspect(nginx#00112233).k -> aspect(firewall#f1f2f3f4).h -> aspect(nginx#00112233).k; aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
     };
 
     # assertAcyclic throws on a cyclic graph, is identity on an acyclic one.
