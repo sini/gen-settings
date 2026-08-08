@@ -4,7 +4,7 @@
 
 gen-settings resolves an aspect's settings — a static, introspectable schema of `{ default; merge }` leaves — against an ordered list of override layers, producing a resolved value plus a full per-field provenance chain. It adds refs-as-data (identity-bearing cross-aspect references with static cycle detection), structured provenance, and the graduated injection construct (`injectAspectSettings` / `assembleHost`).
 
-**Class B (nixpkgs-lib-free).** The library is `builtins` + [gen-prelude](https://github.com/sini/gen-prelude), plus the [gen-algebra](https://github.com/sini/gen-algebra) fold (`foldLayersTraced` — the single fold implementation, never reimplemented here) and [gen-bind](https://github.com/sini/gen-bind) injection. [gen-schema](https://github.com/sini/gen-schema) is consumed **interface-only**: values must carry `id_hash`, but nothing is imported from it. A CI purity invariant (`ci/tests/purity.nix`) keeps that boundary honest.
+**Class B (nixpkgs-lib-free).** The library is `builtins` + [gen-prelude](https://github.com/sini/gen-prelude), plus the [gen-algebra](https://github.com/sini/gen-algebra) fold (`foldLayersTraced` — the single fold implementation, never reimplemented here), [gen-bind](https://github.com/sini/gen-bind) injection and [gen-graph](https://github.com/sini/gen-graph) cycle detection (`cyclePaths` — the cycle-finding algorithm is never reimplemented here either; what stays is the E3 diagnostic). [gen-schema](https://github.com/sini/gen-schema) is consumed **interface-only**: values must carry `id_hash`, but nothing is imported from it. A CI purity invariant (`ci/tests/purity.nix`) keeps that boundary honest.
 
 ## Table of Contents
 
@@ -34,8 +34,9 @@ The lib is **lattice-blind by design**: the layer chain arrives as an ordered li
 
 ```
 gen-prelude ─┐
-gen-algebra ─┼─→ gen-settings ─→ den-hoag (four-concern assembly)
-gen-bind    ─┘
+gen-algebra ─┤
+gen-bind    ─┼─→ gen-settings ─→ den-hoag (four-concern assembly)
+gen-graph   ─┘
 gen-schema (interface only: id_hash)
 ```
 
@@ -49,6 +50,7 @@ let
     prelude = gen-prelude.lib;
     algebra = gen-algebra.lib;
     bind = gen-bind.lib;
+    genGraph = gen-graph.lib;
   };
   inherit (genSettings) mkSchema resolveOne;
 

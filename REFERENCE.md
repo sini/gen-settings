@@ -86,7 +86,11 @@ refGraph = batch: { nodes; edges; cycles; }
 - `nodes` — `[ <address> ]`, address `= { aspect = <entry>; field; }`.
 - `edges` — `[ { from = <address>; to = <address>; at; path; } ]`, **field-level**: a contribution
   to `(A, f)` containing `ref B [g, …]` yields edge `(A,f) → (B,g)`.
-- `cycles` — `[ [ <address> ] ]`, each cycle an ordered address list.
+- `cycles` — `[ [ <address> ] ]`, each an **ordered** address list: consecutive pairs are real
+  edges, so the list may be rendered as a traversal. **One representative per cyclic component**,
+  rotated to begin at the component's smallest node key — a component holding several distinct
+  cycles reports one of them. Detection is gen-graph's `cyclePaths`; the field-level node key
+  (`id_hash:field`) is what keeps mutually-referring aspects from refusing.
 
 Pure function of schemas + layer values — `resolveRef` is never invoked, no resolved value is
 computed. **Conservative over pre-fold values** (edges from every default + every layer contribution,

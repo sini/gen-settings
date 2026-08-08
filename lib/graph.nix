@@ -6,24 +6,24 @@
 # from every layer contribution and every schema default, before any shadowing (L17). This is
 # the honest cost of the static/applicative discipline (Mokhov et al., ICFP 2018 §3): the graph
 # is over-approximated statically rather than discovered during resolution.
+#
+# Cycle DETECTION is gen-graph's (`cyclePaths`), not this library's: the SCC partition and the
+# ordered representative cycle are general graph results, and re-deriving them here cost a full
+# simple-path enumeration on the acyclic — i.e. the always-taken — path. What stays here is the
+# E3 DIAGNOSTIC, which is genuinely this library's: the field-address vocabulary and its rendering.
 {
   prelude,
   ref,
   display,
+  genGraph,
 }:
 let
   inherit (builtins)
     attrNames
     listToAttrs
-    elem
-    elemAt
     head
-    length
-    sort
-    genList
     concatMap
     filter
-    foldl'
     map
     concatStringsSep
     ;
@@ -31,63 +31,9 @@ let
   inherit (display) renderAddress;
 
   # Internal graph key — id_hash + field. Identity law: keys are id_hash-based, names are
-  # display only.
+  # display only. The field component is what keeps mutually-referring aspects from refusing:
+  # granularity is a property of this key, and gen-graph treats it as an opaque string.
   nodeKey = addr: "${addr.aspect.id_hash}:${addr.field}";
-
-  mod = a: b: a - ((a / b) * b);
-  firstNonNull = foldl' (acc: x: if acc != null then acc else x) null;
-
-  # Find a cycle through `start` (a path start -> … -> start) as an ordered list of node keys,
-  # or null. Standard DFS over the field-address graph.
-  cycleFromKey =
-    start: adj:
-    let
-      walk =
-        path: node:
-        let
-          succs = adj.${node} or [ ];
-        in
-        firstNonNull (
-          map (
-            s:
-            if s == start then
-              path # closed: path already holds start..node
-            else if elem s path then
-              null # a non-start node already on the path — a different cycle, skip
-            else
-              walk (path ++ [ s ]) s
-          ) succs
-        );
-    in
-    walk [ start ] start;
-
-  findCycles =
-    nodeKeys: adj: nodeMap:
-    let
-      raw = filter (c: c != null) (map (k: cycleFromKey k adj) nodeKeys);
-      # Canonicalize by rotating each cycle to start at its smallest node key, so rotations of
-      # the same cycle dedup to one representative.
-      canon =
-        cyc:
-        let
-          minK = head (sort (a: b: a < b) cyc);
-          n = length cyc;
-          idxOf = foldl' (
-            acc: i:
-            if acc != null then
-              acc
-            else if elemAt cyc i == minK then
-              i
-            else
-              null
-          ) null (genList (i: i) n);
-          rotate = genList (i: elemAt cyc (mod (idxOf + i) n)) n;
-        in
-        rotate;
-      canoned = map canon raw;
-      dedup = foldl' (acc: c: if elem c acc then acc else acc ++ [ c ]) [ ] canoned;
-    in
-    map (cyc: map (k: nodeMap.${k}) cyc) dedup;
 in
 {
   # refGraph batch -> { nodes; edges; cycles; }
@@ -160,7 +106,14 @@ in
         }) nodeKeys
       );
 
-      cycles = findCycles nodeKeys adj nodeMap;
+      # Each reported cycle is an ORDERED walk over node keys — every consecutive pair is an
+      # edge — which is what licenses assertAcyclic's " -> " join below.
+      cycles = map (cyc: map (k: nodeMap.${k}) cyc) (
+        genGraph.cyclePaths {
+          nodes = nodeKeys;
+          edges = k: adj.${k} or [ ];
+        }
+      );
     in
     {
       inherit nodes edges cycles;

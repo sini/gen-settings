@@ -19,7 +19,7 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim.
 | Minting `id_hash`, kinds, registries | `gen-schema` — "gen-schema: typed record registry with extension points for the pure-gen module system". Consumed **interface-only**: not a flake input (`flake.nix:8-12`), and the name occurs in `lib/` only inside a comment (`lib/default.nix:5`). gen-settings only *reads* `id_hash` |
 | Deriving the containment chain the layer list is built from | `gen-product` — "gen-product — graph products as first-class operations over accessor-graphs (Cartesian / tensor / strong / lexicographic; cells, slices, fibers, projections, quotients, restriction, containment chains), lazy in and out". `README.md:31` names it as the upstream producer |
 | Deriving the D/I scope chain / name-resolution order | `gen-scope` — "gen-scope: demand-driven attribute grammar evaluator over algebraic scope graphs". `README.md:31,133` names it as the upstream producer |
-| Graph traversal and query combinators | `gen-graph` — "gen-graph: accessor-based graph query combinators". `lib/graph.nix` carries a private DFS (`cycleFromKey` / `findCycles`, `lib/graph.nix:42-90`) and imports nothing |
+| Graph traversal and query combinators, **including ref-cycle detection** | `gen-graph` — "gen-graph: accessor-based graph query combinators". `lib/graph.nix` builds the field-address accessor and calls `genGraph.cyclePaths`; the cycle-finding algorithm is not reimplemented here. What stays is the E3 diagnostic — the address vocabulary and its rendering (`lib/graph.nix`, `assertAcyclic`) |
 | Choosing *which* graph positions a setting applies to | `gen-select` — "gen-select: selector algebra for attributed graph positions" |
 | Aspect traits and classification — gen-settings treats an aspect entry as opaque data needing only `name` + `id_hash` | `gen-aspects` — "gen-aspects: aspect-oriented composition types (pure-gen, re-hosted on gen-merge)" |
 | Module merge / `evalModules` — the token is CI-forbidden inside `lib/` (`ci/tests/purity.nix:52`) | `gen-merge` — "gen-merge — pure-Nix byte-mode module MERGE engine (evalModuleTree) for the pure-gen module system" |
@@ -31,9 +31,9 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim.
 
 Two entries, both yielding the same eleven names.
 
-- **Flake**: `inputs.gen-settings.lib` — `flake.nix:22-26` applies `import ./lib` to `gen-prelude.lib`, `gen-algebra.lib`, `gen-bind.lib`.
-- **Root `default.nix`** (non-flake): a function whose arguments are all defaulted. It reads its own lockfile — `builtins.fromJSON (builtins.readFile ./flake.lock)` (`default.nix:8`) — resolves `lock.nodes.${lock.nodes.root.inputs.<name>}.locked` and `builtins.fetchTree`s that node (`default.nix:9-16`), then imports `<fetched>/lib` (`default.nix:17-19`). `prelude` and `algebra` are imported bare; `bind` is re-applied to `prelude` (`default.nix:19`) because gen-bind's `lib/` is itself a function.
-- `import ./lib` alone is **a function** of `{ prelude, algebra, bind }` (`lib/default.nix:7-11`) — not a bare value.
+- **Flake**: `inputs.gen-settings.lib` — `flake.nix` applies `import ./lib` to `gen-prelude.lib`, `gen-algebra.lib`, `gen-bind.lib` and `gen-graph.lib` (as `genGraph`).
+- **Root `default.nix`** (non-flake): a function whose arguments are all defaulted. It reads its own lockfile — `builtins.fromJSON (builtins.readFile ./flake.lock)` (`default.nix:8`) — resolves `lock.nodes.${lock.nodes.root.inputs.<name>}.locked` and `builtins.fetchTree`s that node (`default.nix:9-16`), then imports `<fetched>/lib` (`default.nix:17-19`). `prelude` and `algebra` are imported bare; `bind` and `genGraph` are re-applied to `prelude` because gen-bind's and gen-graph's `lib/` are themselves functions.
+- `import ./lib` alone is **a function** of `{ prelude, algebra, bind, genGraph }` — not a bare value. `genGraph` is the gen-graph library; the local name `graph` inside `lib/default.nix` is this library's own ref-graph module, which is why the injected one is not called `graph`.
 
 **Schema** — `lib/schema.nix`
 
@@ -166,7 +166,7 @@ Verified at `24a78e9` by evaluating against the flake's `lib` (`nix eval --impur
 - nixpkgs-lib-free — `test-library-source-is-nixpkgs-free` (`ci/tests/purity.nix`) scans `lib/**.nix` plus the root `flake.nix` and `default.nix`, comments stripped, for `nixpkgs`, `lib.types`, `lib.mkOption`, `lib.mkMerge`, `lib.mkForce`, `lib.evalModules`, `evalModules`, `{ lib }`, `{ lib,` (`ci/tests/purity.nix:45-55`). `ci/` is out of scope by design.
 - No hashing — `git grep -n -E 'hashString|builtins\.hash|hashFile' -- lib/` returns nothing; positive control `git grep -c -E 'id_hash' -- lib/` hits 7 files. Identity is read, never minted.
 - No strength/priority machinery — `git grep -n -E 'mkForce|mkOverride|mkDefault|priority|strength' -- lib/` hits only the comment at `lib/resolve.nix:6`; positive control `git grep -c -E 'merge' -- lib/` hits 3 files.
-- The only gen-\* names anywhere in `lib/` are the three injected deps plus a `gen-schema` comment — `git grep -n -o -E 'gen-[a-z]+' -- lib/ | sort -u` yields `gen-settings` (self), `gen-algebra`, `gen-prelude`, `gen-bind`, and `gen-schema` at `lib/default.nix:5` only.
+- The only gen-\* names anywhere in `lib/` are the four injected deps plus a `gen-schema` comment — `git grep -n -o -E 'gen-[a-z]+' -- lib/ | sort -u` yields `gen-settings` (self), `gen-algebra`, `gen-prelude`, `gen-bind`, `gen-graph`, and `gen-schema` at `lib/default.nix:5` only.
 
 ## Drift check
 
