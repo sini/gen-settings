@@ -107,7 +107,7 @@ Every field's provenance is an ordered chain of structured entries `{ scope; ren
 
 ## API Reference
 
-See [REFERENCE.md](./REFERENCE.md) for the full signature-level reference. Public surface: `mkSchema`, `ref` / `isRef` / `refsIn`, `refGraph` / `assertAcyclic`, `resolveOne` / `resolveAll`, `injectAspectSettings` / `assembleHost`, `renderAddress`.
+See [REFERENCE.md](./REFERENCE.md) for the full signature-level reference. Public surface: `mkSchema`, `ref` / `isRef` / `refsIn`, `refGraph` / `assertAcyclic` / `renderCycles`, `resolveOne` / `resolveAll`, `injectAspectSettings` / `assembleHost`, `renderAddress`.
 
 ## Design Constraints
 

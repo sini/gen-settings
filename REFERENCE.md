@@ -105,6 +105,18 @@ assertAcyclic = graph: graph        # identity when cycles == []; otherwise E3
 E3 renders every address in each cycle, closing back to the head, e.g.
 `aspect(theme#a1b2c3d4).font -> aspect(terminal#e5f6a7b8).font-stack -> aspect(theme#a1b2c3d4).font`.
 
+### `renderCycles`
+
+```nix
+renderCycles = cycles: string        # [ [ <address> ] ] -> the E3 body
+```
+
+The rendering `assertAcyclic` interpolates into its throw, exposed as a named binding. Each cycle
+becomes a traversal closing back on its head (`" -> "`), and cycles are joined by `"; "`. Exposed
+because a throw's message is unreachable to `builtins.tryEval`, which yields only `success` — so a
+caller or test that cannot call this can only re-implement it, and a re-implementation is not an
+oracle for the shipped rendering.
+
 ______________________________________________________________________
 
 ## Resolution

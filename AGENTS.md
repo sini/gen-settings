@@ -29,7 +29,7 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim.
 
 ## Exports
 
-Two entries, both yielding the same eleven names.
+Two entries, both yielding the same twelve names.
 
 - **Flake**: `inputs.gen-settings.lib` — `flake.nix` applies `import ./lib` to `gen-prelude.lib`, `gen-algebra.lib`, `gen-bind.lib` and `gen-graph.lib` (as `genGraph`).
 - **Root `default.nix`** (non-flake): a function whose arguments are all defaulted. It reads its own lockfile — `builtins.fromJSON (builtins.readFile ./flake.lock)` (`default.nix:8`) — resolves `lock.nodes.${lock.nodes.root.inputs.<name>}.locked` and `builtins.fetchTree`s that node (`default.nix:9-16`), then imports `<fetched>/lib` (`default.nix:17-19`). `prelude` and `algebra` are imported bare; `bind` and `genGraph` are re-applied to `prelude` because gen-bind's and gen-graph's `lib/` are themselves functions.
@@ -57,6 +57,7 @@ Two entries, both yielding the same eleven names.
 |---|---|
 | `refGraph` | `batch -> { nodes; edges; cycles; }` |
 | `assertAcyclic` | `graph -> graph` (identity when `cycles == [ ]`, else E3) |
+| `renderCycles` | `[ [ <address> ] ] -> string` (the E3 body; the binding `assertAcyclic` throws) |
 
 **Resolution** — `lib/resolve.nix`
 

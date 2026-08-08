@@ -15,7 +15,7 @@ let
     refGraph
     assertAcyclic
     ref
-    renderAddress
+    renderCycles
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   inherit (fx.aspects)
@@ -173,16 +173,12 @@ let
     )
   ];
 
-  # E3 rendering, recomputed from the graph's cycle data exactly as assertAcyclic renders it.
-  renderCycle =
-    cyc:
-    let
-      addrs = map (a: renderAddress { inherit (a) aspect field; }) cyc;
-    in
-    lib.concatStringsSep " -> " (addrs ++ [ (lib.head addrs) ]);
-  # The whole E3 body, including the "; " join BETWEEN cycles — the only place multiplicity
-  # reaches the reader, and the reason a multi-cycle fixture is pinned at the message level.
-  renderCycles = g: lib.concatStringsSep "; " (map renderCycle g.cycles);
+  # E3 goldens call the SHIPPED renderer (`genSettings.renderCycles`, lib/graph.nix) — the same
+  # binding assertAcyclic interpolates into its throw. A local re-implementation would stay green
+  # when the shipped rendering changed, which is the one thing these goldens exist to catch.
+  # A throw's message is unreachable to builtins.tryEval, which yields only `success`, so calling
+  # the renderer is the only way a TEST can observe it. (Out of band a `nix eval` run does print
+  # the message to stderr, which is how the equivalence here was checked.)
 
   cyclicBatch = batch2;
   forced = builtins.tryEval (builtins.deepSeq (resolveAll { batch = cyclicBatch; }).value true);
@@ -227,14 +223,14 @@ in
 
     # E3 message golden — rendered addresses, full cycle closing back to its head.
     test-e3-message-golden = {
-      expr = renderCycle (lib.head graph2.cycles);
+      expr = renderCycles [ (lib.head graph2.cycles) ];
       expected = "aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
     };
     # E3 message golden, DISCRIMINATING — the cycle is reported in traversal order, so every
     # " -> " in the body is a real edge. A cycle finder that reports membership sorted by key
     # renders `theme.f -> terminal.g` here, which is not an edge of this graph.
     test-e3-message-golden-discriminating = {
-      expr = renderCycle (lib.head graph3Discriminating.cycles);
+      expr = renderCycles [ (lib.head graph3Discriminating.cycles) ];
       expected = "aspect(theme#a1b2c3d4).f -> aspect(firewall#f1f2f3f4).h -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
     };
     # ...and exactly one cycle is reported for the single component it forms.
@@ -264,7 +260,7 @@ in
     };
     # The E3 body for that component names a single traversable loop and carries NO "; ".
     test-figure-eight-message-golden = {
-      expr = renderCycles graphFigureEight;
+      expr = renderCycles graphFigureEight.cycles;
       expected = "aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
     };
 
@@ -276,7 +272,7 @@ in
       expected = 2;
     };
     test-disjoint-cycles-message-golden = {
-      expr = renderCycles graphDisjointCycles;
+      expr = renderCycles graphDisjointCycles.cycles;
       expected = "aspect(nginx#00112233).k -> aspect(firewall#f1f2f3f4).h -> aspect(nginx#00112233).k; aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
     };
 

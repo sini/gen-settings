@@ -34,8 +34,27 @@ let
   # display only. The field component is what keeps mutually-referring aspects from refusing:
   # granularity is a property of this key, and gen-graph treats it as an opaque string.
   nodeKey = addr: "${addr.aspect.id_hash}:${addr.field}";
+
+  # E3's body. Each cycle renders as a traversal closing back on its head — every " -> " is a real
+  # edge, which is what the ordered cycle contract buys — and cycles are joined by "; ". This is a
+  # NAMED binding rather than a local of assertAcyclic because a throw's message is unreachable to
+  # `builtins.tryEval` (it yields only `success`), so a golden that cannot call the renderer can
+  # only re-implement it, and a re-implementation is not an oracle for the shipped one.
+  renderCycles =
+    cycles:
+    let
+      renderCycle =
+        cyc:
+        let
+          addrs = map (a: renderAddress { inherit (a) aspect field; }) cyc;
+        in
+        concatStringsSep " -> " (addrs ++ [ (head addrs) ]);
+    in
+    concatStringsSep "; " (map renderCycle cycles);
 in
 {
+  inherit renderCycles;
+
   # refGraph batch -> { nodes; edges; cycles; }
   #   batch = [ { schema; layers; … } ]
   refGraph =
@@ -126,14 +145,5 @@ in
     if graph.cycles == [ ] then
       graph
     else
-      let
-        renderCycle =
-          cyc:
-          let
-            addrs = map (a: renderAddress { inherit (a) aspect field; }) cyc;
-          in
-          concatStringsSep " -> " (addrs ++ [ (head addrs) ]);
-        rendered = concatStringsSep "; " (map renderCycle graph.cycles);
-      in
-      throw "gen-settings: ref cycle (E3): ${rendered}";
+      throw "gen-settings: ref cycle (E3): ${renderCycles graph.cycles}";
 }

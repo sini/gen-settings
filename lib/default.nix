@@ -34,7 +34,7 @@ in
 {
   inherit (schema) mkSchema;
   inherit (ref) ref isRef refsIn;
-  inherit (graph) refGraph assertAcyclic;
+  inherit (graph) refGraph assertAcyclic renderCycles;
   inherit (resolve) resolveOne resolveAll;
   inherit (inject) injectAspectSettings assembleHost;
   inherit (display) renderAddress;
