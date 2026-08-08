@@ -23,19 +23,12 @@
 #   REPRODUCE, the wired way. It drives this file over the current tree, checks both controls and
 #   gates on the growth condition below:
 #
-#     nix run ./ci#perf-bench --override-input gen-graph /path/to/gen-graph
-#
-#   ★ The override is REQUIRED until gen-graph's `cyclePaths` is released and ci/flake.lock is
-#   bumped past it: this repo's `lib/` calls `cyclePaths`, and the currently locked gen-graph does
-#   not have it, so the unflagged command dies with `attribute 'cyclePaths' missing` before any
-#   row is produced. Note the failure is ASYMMETRIC — a pre-extraction `lib/` never reaches
-#   `cyclePaths`, so a baseline arm runs unflagged while the current arm does not. Once the lock
-#   is bumped the flag can go.
+#     nix run ./ci#perf-bench
 #
 #   Point it at a second revision for the two-arm table:
 #
 #     git worktree add /tmp/gs-base <parent-rev>
-#     PERF_BASELINE_LIB=/tmp/gs-base/lib nix run ./ci#perf-bench --override-input gen-graph /path/to/gen-graph
+#     PERF_BASELINE_LIB=/tmp/gs-base/lib nix run ./ci#perf-bench
 #
 #   REPRODUCE by hand. `srcs` entries are FILESYSTEM PATHS to each library's `lib/` directory —
 #   not `<name>` search-path lookups, which resolve only if you also pass a matching `-I` (bare
