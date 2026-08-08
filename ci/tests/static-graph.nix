@@ -81,9 +81,7 @@ let
   edgeStrings =
     g:
     lib.sort lib.lessThan (
-      map (
-        e: "${e.from.aspect.name}.${e.from.field} -> ${e.to.aspect.name}.${e.to.field}"
-      ) g.edges
+      map (e: "${e.from.aspect.name}.${e.from.field} -> ${e.to.aspect.name}.${e.to.field}") g.edges
     );
 
   # ── two DISJOINT cyclic components: theme.f <-> terminal.g and firewall.h <-> nginx.k. This is

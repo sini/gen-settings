@@ -19,7 +19,14 @@ let
   display = import ./display.nix { inherit prelude; };
   schema = import ./schema.nix { inherit prelude; };
   ref = import ./ref.nix { inherit prelude; };
-  graph = import ./graph.nix { inherit prelude ref display genGraph; };
+  graph = import ./graph.nix {
+    inherit
+      prelude
+      ref
+      display
+      genGraph
+      ;
+  };
   resolve = import ./resolve.nix {
     inherit
       prelude
