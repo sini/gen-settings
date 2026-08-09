@@ -104,7 +104,8 @@ settings.font = { default = _: ref config.aspects.theme [ "font" ]; };
 # → error: gen-schema: fieldRefsIn: function at scanned position font — this scan's domain is data.
 #   A function is refused rather than skipped … If this position is a computed value, express it
 #   where its reads stay visible — `fieldRef <instance> <path>` for a cross-instance read, or the
-#   kind's `computed` hook for a value derived from collections and defs.
+#   kind's `computed` hook for a value derived from collections and defs; otherwise, make the
+#   position data, or keep the function outside the scanned structure.
 ```
 
 Nix exposes no primitive that inspects a function body, so a ref inside a closure is unreachable to any structural scan — and skipping it fails *open*: the edge is never derived, a cycle it would have closed goes undetected, and the unresolved ref record leaks into the resolved value as data. Refusing eliminates the case rather than declaring it unanalysable, so every dependence fact `refGraph` reports is a derived one. A schema is plain data by its own contract, so on conforming input the refusal fires never.
