@@ -4,7 +4,7 @@
 
 gen-settings resolves an aspect's settings — a static, introspectable schema of `{ default; merge }` leaves — against an ordered list of override layers, producing a resolved value plus a full per-field provenance chain. It adds refs-as-data (identity-bearing cross-aspect references with static cycle detection), structured provenance, and the graduated injection construct (`injectAspectSettings` / `assembleHost`).
 
-**Class B (nixpkgs-lib-free).** The library is `builtins` + [gen-prelude](https://github.com/sini/gen-prelude), plus the [gen-algebra](https://github.com/sini/gen-algebra) fold (`foldLayersTraced` — the single fold implementation, never reimplemented here), [gen-bind](https://github.com/sini/gen-bind) injection and [gen-graph](https://github.com/sini/gen-graph) cycle detection (`cyclePaths` — the cycle-finding algorithm is never reimplemented here either; what stays is the E3 diagnostic). [gen-schema](https://github.com/sini/gen-schema) is consumed **interface-only**: values must carry `id_hash`, but nothing is imported from it. A CI purity invariant (`ci/tests/purity.nix`) keeps that boundary honest.
+**Class B (nixpkgs-lib-free).** The library is `builtins` + [gen-prelude](https://github.com/sini/gen-prelude), plus the [gen-algebra](https://github.com/sini/gen-algebra) fold (`foldLayersTraced` — the single fold implementation, never reimplemented here), [gen-bind](https://github.com/sini/gen-bind) injection and [gen-graph](https://github.com/sini/gen-graph) cycle detection (`cyclePaths` — the cycle-finding algorithm is never reimplemented here either; what stays is the E3 diagnostic). [gen-schema](https://github.com/sini/gen-schema) supplies the **ref datum** — the inert record and its structural scan live there, beside the option type whose inhabitants refs are — and the `id_hash` law every ref target must satisfy. A CI purity invariant (`ci/tests/purity.nix`) keeps that boundary honest.
 
 ## Table of Contents
 
@@ -36,8 +36,8 @@ The lib is **lattice-blind by design**: the layer chain arrives as an ordered li
 gen-prelude ─┐
 gen-algebra ─┤
 gen-bind    ─┼─→ gen-settings ─→ den-hoag (four-concern assembly)
-gen-graph   ─┘
-gen-schema (interface only: id_hash)
+gen-graph   ─┤
+gen-schema  ─┘  (the ref datum + id_hash)
 ```
 
 gen-settings is an L2 contract library on the gen substrate. den-hoag composes it: per cell, a containment chain × D/I chain becomes the ordered layer list, gen-settings folds it, and the parametric aspect content consumes the resolved settings through the injection construct.
@@ -93,9 +93,18 @@ A schema default or any layer contribution may reference another aspect's resolv
 settings.font = { default = ref config.aspects.theme [ "font" "mono" ]; };
 ```
 
-`ref` takes the aspect **registry entry** (never a string — a value without `id_hash` throws E6 at application time) and a field path list. Refs are **inert data** — no functions, no thunks — so schemas stay introspectable and the cross-aspect dependency graph is computable statically (`refGraph`). Cycles are a definition-time error (E3) naming every address in the cycle. Refs resolve during the fold (fold-then-substitute; refs are merge-atomic, so this equals folding pre-substituted inputs).
+`ref` takes the aspect **registry entry** (never a string — a value without `id_hash` throws E6 at application time) and a field path list. The record and its scan are gen-schema's `fieldRef` family; what this library adds is the E6 diagnostic, the field-address graph over them, and resolution. Refs are **inert data** — no functions, no thunks — so schemas stay introspectable and the cross-aspect dependency graph is computable statically (`refGraph`). Cycles are a definition-time error (E3) naming every address in the cycle. Refs resolve during the fold (fold-then-substitute; refs are merge-atomic, so this equals folding pre-substituted inputs).
 
 The static graph is **conservative over pre-fold values** and **structurally strict**: it forces every scanned contribution to WHNF and counts edges from refs a later `replace` layer would shadow. This is the honest cost of the static/applicative discipline (see [Theoretical Foundations](#theoretical-foundations)).
+
+**The scan refuses functions.** A function found in a scanned position throws, naming the position, rather than being passed over as a leaf:
+
+```nix
+settings.font = { default = _: ref config.aspects.theme [ "font" ]; };
+# → error: gen-schema: fieldRefsIn: function at scanned position font — this scan's domain is data …
+```
+
+Nix exposes no primitive that inspects a function body, so a ref inside a closure is unreachable to any structural scan — and skipping it fails *open*: the edge is never derived, a cycle it would have closed goes undetected, and the unresolved ref record leaks into the resolved value as data. Refusing eliminates the case rather than declaring it unanalysable, so every dependence fact `refGraph` reports is a derived one. A schema is plain data by its own contract, so on conforming input the refusal fires never.
 
 ### Structured Provenance
 

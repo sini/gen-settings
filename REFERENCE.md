@@ -44,13 +44,17 @@ ______________________________________________________________________
 ### `ref`
 
 ```nix
-ref = aspectEntry: path: { __genSettingsRef = true; aspect = aspectEntry; path = path; }
+ref = aspectEntry: path: { __genSchemaFieldRef = true; aspect = aspectEntry; path = path; }
 ```
 
 Inert, identity-bearing cross-aspect reference. `aspectEntry` MUST carry `id_hash` (E6 otherwise, at
 application time — a string or an id-less attrset throws immediately). `path` is a non-empty list of
 field-name strings; its head is a field of the target schema. Refs are plain data (no functions, no
 thunks) and are **merge-atomic**: no strategy ever merges *into* a ref.
+
+The record and the scan below are gen-schema's `fieldRef` / `isFieldRef` / `fieldRefsIn`, re-exported
+here; the datum sits beside the option **type** (`schema.ref`) whose inhabitants these values are.
+gen-settings keeps the E6 code and its message, thrown at this boundary before the record is built.
 
 ### `isRef`
 
@@ -69,8 +73,13 @@ refsIn = v: [ { at; aspect; path; } ]
 
 Deep structural scan of any value. `at` is the subpath within `v` where the ref sits (`[ ]` = `v`
 itself; attrset keys and list indices compose it). Refs are inspected as records, never resolved
-(L7). Functions and non-collection scalars are leaves — a ref buried in a function body is invisible
-and unsupported (refs are data).
+(L7). Non-collection scalars are leaves.
+
+**A function in a scanned position is REFUSED**, not treated as a leaf: the scan throws, naming the
+position. The domain is data. A ref inside a closure is unreachable to any structural scan, so
+skipping it fails open — the edge is never derived, the cycle it would have closed goes undetected,
+and the unresolved record leaks into the resolved value as data. This is a user-visible refusal
+contract: a value that once evaluated with a silently-invisible ref now throws.
 
 ______________________________________________________________________
 

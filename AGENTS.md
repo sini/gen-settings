@@ -6,7 +6,7 @@
 
 ## Scope
 
-Stratified settings resolution: folds a static `{ default; merge }` schema against a caller-supplied ordered layer list into `{ value; provenance; }`, adding refs-as-data (inert cross-aspect references with a static dependency graph) and the injection construct that hands the resolved value to parametric class content.
+Stratified settings resolution: folds a static `{ default; merge }` schema against a caller-supplied ordered layer list into `{ value; provenance; }`, adding refs-as-data (inert cross-aspect references with a static dependency graph — the ref DATUM is gen-schema's `fieldRef`; what is this library's is the field-address graph over it, and the E-code vocabulary) and the injection construct that hands the resolved value to parametric class content.
 
 ## Not this library's job
 
@@ -16,7 +16,7 @@ Quoted text is the owner's own `flake.nix` `description` field, verbatim.
 |---|---|
 | The layered fold itself — merge strategies, accumulation, value byte-identity | `gen-algebra` — "gen-algebra: pure Nix algebra — search monad, records, intensional functions, either". `lib/resolve.nix:foldLayersTraced` binds `algebra.record.foldLayersTraced`; the fold is never reimplemented here |
 | Module argument binding, `wrap` / `wrapIdentity`, lazy contracts | `gen-bind` — "gen-bind: module binding with external arguments for Nix". Used at `lib/inject.nix:injectAspectSettings` (`bind.wrap`) and `lib/inject.nix:assembleHost` (`bind.wrapIdentity`) |
-| Minting `id_hash`, kinds, registries | `gen-schema` — "gen-schema: typed record registry with extension points for the pure-gen module system". Consumed **interface-only**: not a flake input (`flake.nix:inputs`), and the name occurs in `lib/` only inside a comment (`lib/default.nix`, file header). gen-settings only *reads* `id_hash` |
+| Minting `id_hash`, kinds, registries — **and the ref DATUM itself**: the record shape, its identity law, and the deep structural scan | `gen-schema` — "gen-schema: typed record registry with extension points for the pure-gen module system". A flake **input** since the ref datum re-homed there as `fieldRef` / `isFieldRef` / `fieldRefsIn`, beside the option TYPE (`ref`) whose inhabitants refs are. It was once consumed interface-only, and that line in the file headers is the one that moved. gen-settings still only *reads* `id_hash`; what stays here is the **E6 diagnostic** over the constructor (`lib/ref.nix:ref`) |
 | Deriving the containment chain the layer list is built from | `gen-product` — "gen-product — graph products as first-class operations over accessor-graphs (Cartesian / tensor / strong / lexicographic; cells, slices, fibers, projections, quotients, restriction, containment chains), lazy in and out". `README.md` § *Overview* (the "lattice-blind by design" paragraph) names it as the upstream producer |
 | Deriving the D/I scope chain / name-resolution order | `gen-scope` — "gen-scope: demand-driven attribute grammar evaluator over algebraic scope graphs". `README.md` § *Overview* and § *Theoretical Foundations* ("Layer-order provenance (context)") name it as the upstream producer |
 | Graph traversal and query combinators, **including ref-cycle detection** | `gen-graph` — "gen-graph: accessor-based graph query combinators". `lib/graph.nix` builds the field-address accessor and calls `genGraph.cyclePaths`; the cycle-finding algorithm is not reimplemented here. What stays is the E3 diagnostic — the address vocabulary and its rendering (`lib/graph.nix`, `assertAcyclic`) |
@@ -43,13 +43,13 @@ Two entries, both yielding the same twelve names.
 
 `fields` leaves are `{ default; merge ? "replace"; }`; `merge ∈ { replace, append, recursive }` (`lib/schema.nix:validMerges`); field names are bare keys.
 
-**Refs** — `lib/ref.nix`
+**Refs** — `lib/ref.nix`, a thin E6 boundary; the datum is gen-schema's `fieldRef` family
 
 | Export | Signature |
 |---|---|
-| `ref` | `aspectEntry -> [string] -> { __genSettingsRef = true; aspect; path; }` |
-| `isRef` | `any -> bool` |
-| `refsIn` | `any -> [ { at; aspect; path; } ]` (deep structural scan; `at` is the subpath within the scanned value) |
+| `ref` | `aspectEntry -> [string] -> { __genSchemaFieldRef = true; aspect; path; }` — E6 fires here, then `genSchema.fieldRef` builds the record |
+| `isRef` | `any -> bool` — `genSchema.isFieldRef`, re-exported unchanged |
+| `refsIn` | `any -> [ { at; aspect; path; } ]` — `genSchema.fieldRefsIn`, re-exported unchanged (deep structural scan; `at` is the subpath within the scanned value). **Throws** on a function in a scanned position |
 
 **Static dependency graph** — `lib/graph.nix`
 
@@ -126,14 +126,14 @@ Verified at `24a78e9` by evaluating against the flake's `lib` (`nix eval --impur
 
 | Trap | Evidence |
 |---|---|
-| `substDeep`, `refMarker` and `shortHash` are exported by their own modules but dropped by the public surface | `lib/resolve.nix:substDeep`, `lib/ref.nix:refMarker`, `lib/display.nix:shortHash` vs `lib/default.nix`'s export attrset; `lib ? substDeep` / `? refMarker` / `? shortHash` all ⇒ `false`, control `lib ? isRef` ⇒ `true` |
+| `substDeep` and `shortHash` are exported by their own modules but dropped by the public surface | `lib/resolve.nix:substDeep`, `lib/display.nix:shortHash` vs `lib/default.nix`'s export attrset; `lib ? substDeep` / `? shortHash` both ⇒ `false`, control `lib ? isRef` ⇒ `true`. The marker string is gen-schema's `fieldRefMarker` and is not re-exported here either |
 | A dotted field name is an **eager** E1 — it fires on *any* use of the schema, including `attrNames` of its own `fields` | `lib/schema.nix:mkSchema` (`dotCheck`, forced by the body's `seq dotCheck`); `.aspect` ⇒ threw, `attrNames .fields` ⇒ threw; control, bare key, `.aspect` ⇒ succeeded |
 | A missing `default` or unknown `merge` is **per-field lazy** — the schema, its attribute names, and every sibling field stay usable | `lib/schema.nix:mkSchema` (`normField`); with `fields = { good = { default = 1; }; bad = { }; }`: `.aspect` ⇒ ok, `attrNames .defaults` ⇒ ok, `.defaults.good` ⇒ ok, `.defaults.bad` ⇒ threw. Same shape for `merge`: `attrNames .strategies` ⇒ ok, `.strategies.f` ⇒ threw. Tests: `test-e1-dotted-key`, `test-e1-missing-default`, `test-e1-bad-merge` (`ci/tests/resolution-errors.nix`) |
 | `merge` accepts exactly three strategies; `"semilattice-set"` is E1 here **even though the underlying fold implements it** | `lib/schema.nix:validMerges`; `.strategies.f` with `merge = "semilattice-set"` ⇒ threw. The fold's fourth branch is read from gen-algebra `lib/rec.nix:foldLayersTraced` (the `semilattice-set` arm of its `resolve`), not exercised in this run |
 | `ref` validates at **application** time, not at resolution time | `lib/ref.nix:ref`; `ref "theme" [ "font" ]`, `ref { name = "theme"; } [ "font" ]`, `ref A [ ]` and `ref A [ 1 ]` all threw; control `ref A [ "font" ]` ⇒ record |
-| `isRef` is marker-only — a hand-written `{ __genSettingsRef = true; }` is accepted and *counted*, and dies later on a raw missing-attribute error (not an E-code, and **not** `tryEval`-catchable) | `lib/ref.nix:isRef`, `lib/ref.nix:refsIn` (`go`'s ref branch); `isRef` ⇒ `true`, `length (refsIn { x = <marker>; })` ⇒ `1`, forcing that hit's `.path` ⇒ `error: attribute 'path' missing at …/lib/ref.nix:58:36`; control, a real `ref`, `.path` ⇒ `["font"]` |
-| `refsIn` is **structurally strict**: a throwing position anywhere in the scanned value throws during the scan | `lib/ref.nix:refsIn` (its structural-strictness note); `refsIn { x = throw "boom"; }` ⇒ threw, control `refsIn { x = 1; }` ⇒ `[ ]` |
-| A ref inside a function body is invisible — functions are scan leaves | `lib/ref.nix:refsIn` (its leaves note, and `go`'s final `[ ]` branch); `refsIn { f = _: ref A [ "font" ]; }` ⇒ `0` hits, control `refsIn { f = ref A [ "font" ]; }` ⇒ `1` |
+| `isRef` is marker-only — a hand-written `{ __genSchemaFieldRef = true; }` is accepted and *counted*, and dies later on a raw missing-attribute error (not an E-code) | `genSchema.isFieldRef` / `genSchema.fieldRefsIn` (`go`'s ref branch), re-exported at `lib/ref.nix`; `isRef` ⇒ `true`, `length (refsIn { x = <marker>; })` ⇒ `1`, forcing that hit's `.path` ⇒ a missing-attribute error; control, a real `ref`, `.path` ⇒ `["font"]` |
+| `refsIn` is **structurally strict**: a throwing position anywhere in the scanned value throws during the scan | gen-schema's `fieldRefsIn` (its structural-strictness note); `refsIn { x = throw "boom"; }` ⇒ threw, control `refsIn { x = 1; }` ⇒ `[ ]` |
+| A function in a scanned position is **REFUSED**, not skipped — so a ref inside a function body is an error, never an invisible edge. This is a user-visible refusal contract: a value that once evaluated (with a silently-invisible ref) now throws | gen-schema's `fieldRefsIn`, its `isFunction` arm; `refsIn { f = _: ref A [ "font" ]; }` ⇒ threw, control `refsIn { f = ref A [ "font" ]; }` ⇒ `1` hit. Suite: `ci/tests/ref-function-hazard.nix` runs both arms of that pair plus the same pair through `refGraph`. ★ **Those two discriminate this scan from the skipping one**: with gen-schema's `isFunction` arm reverted to `[ ]` the suite goes `90/92`, red on exactly `test-ref-in-function-body-is-refused` and `test-cycle-hidden-in-a-function-body-refuses`, all four controls and all 86 incumbent tests still green |
 | `resolveOne`'s default `resolveRef` **throws E4** — a schema whose own `default` is a ref is unusable without one | `lib/resolve.nix:resolveOne` (the default `resolveRef`); `.value` ⇒ threw; with `resolveRef = _: "RESOLVED"` ⇒ `{ font = "RESOLVED"; }` |
 | With `strict = false` an undeclared contribution is not dropped — it **passes through into the resolved value** under an implicit `replace` | `lib/resolve.nix:foldMember` (`guard`) guards but never filters; the key union is gen-algebra's (`lib/rec.nix:foldLayersTraced` — `allKeySet`). Layer `{ font = "x"; nope = 1; }` against a `font`-only schema: default strict ⇒ threw (E2), `strict = false` ⇒ `{ font = "x"; nope = 1; }`, control declared-only ⇒ `{ font = "x"; }` |
 | `resolveAll`'s `.graph` is **not** gated by `assertAcyclic` — it hands back a cyclic graph without complaint while `.value` throws | `lib/resolve.nix:resolveAll` (`gate` vs the ungated `graph = theGraph`); on a 2-cycle batch `deepSeq r.graph` ⇒ ok, `length r.graph.cycles` ⇒ `1`, `r.value` ⇒ threw, `assertAcyclic r.graph` ⇒ threw |
@@ -167,7 +167,7 @@ Verified at `24a78e9` by evaluating against the flake's `lib` (`nix eval --impur
 - nixpkgs-lib-free — `test-library-source-is-nixpkgs-free` (`ci/tests/purity.nix`) scans `lib/**.nix` plus the root `flake.nix` and `default.nix`, comments stripped, for `nixpkgs`, `lib.types`, `lib.mkOption`, `lib.mkMerge`, `lib.mkForce`, `lib.evalModules`, `evalModules`, `{ lib }`, `{ lib,` (`ci/tests/purity.nix:forbidden`). `ci/` is out of scope by design.
 - No hashing — `git grep -n -E 'hashString|builtins\.hash|hashFile' -- lib/` returns nothing; positive control `git grep -c -E 'id_hash' -- lib/` hits 7 files. Identity is read, never minted.
 - No strength/priority machinery — `git grep -n -E 'mkForce|mkOverride|mkDefault|priority|strength' -- lib/` hits only `lib/resolve.nix`'s file-header comment; positive control `git grep -c -E 'merge' -- lib/` hits 3 files.
-- The only gen-\* names anywhere in `lib/` are the four injected deps plus a `gen-schema` comment — `git grep -n -o -E 'gen-[a-z]+' -- lib/ | sort -u` yields `gen-settings` (self), `gen-algebra`, `gen-prelude`, `gen-bind`, `gen-graph`, and `gen-schema` in `lib/default.nix`'s file header only.
+- The only gen-\* names anywhere in `lib/` are the five injected deps — `git grep -n -o -E 'gen-[a-z]+' -- lib/ | sort -u` yields `gen-settings` (self), `gen-algebra`, `gen-prelude`, `gen-bind`, `gen-graph` and `gen-schema`. gen-schema became the fifth when the ref datum re-homed; before that its only occurrence was a file-header comment.
 
 ## Drift check
 
