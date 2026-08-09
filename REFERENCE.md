@@ -265,7 +265,9 @@ ______________________________________________________________________
 
 `provenance.<field>` = ordered list of entries, default entry first when the field is declared.
 Per-entry lazy substitution: forcing the chain spine or any sibling entry never resolves a given
-entry's refs — only forcing that entry's own `value` does.
+entry's refs — only forcing that entry's own `value` does. The entry above is what this library
+hands `foldLayersTraced` as its `entryTransform`, so the chain is emitted refined by the fold
+rather than re-mapped over its output; the laziness is that hook's non-interference law.
 
 ### Address / edge / graph
 
