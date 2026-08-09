@@ -6,14 +6,16 @@
   # detection over the ref graph — the algorithm lives there, never reimplemented here) and
   # gen-schema (the ref DATUM and its scan live there, beside the reference TYPE whose inhabitants
   # refs are). gen-schema was once consumed interface-only — values must carry id_hash — and is now
-  # an input. The library (./lib) is nixpkgs-lib-free (ci/tests/purity.nix); nixpkgs enters only in
-  # ci/ (the harness).
+  # an input. gen-types states what a well-formed schema field IS (the structural checkers behind
+  # E1, never reimplemented here); the E1 diagnostic itself stays. The library (./lib) is
+  # nixpkgs-lib-free (ci/tests/purity.nix); nixpkgs enters only in ci/ (the harness).
   inputs = {
     gen-prelude.url = "github:sini/gen-prelude";
     gen-algebra.url = "github:sini/gen-algebra";
     gen-bind.url = "github:sini/gen-bind";
     gen-graph.url = "github:sini/gen-graph";
     gen-schema.url = "github:sini/gen-schema";
+    gen-types.url = "github:sini/gen-types";
   };
 
   outputs =
@@ -23,6 +25,7 @@
       gen-bind,
       gen-graph,
       gen-schema,
+      gen-types,
       ...
     }:
     {
@@ -32,6 +35,7 @@
         bind = gen-bind.lib;
         genGraph = gen-graph.lib;
         genSchema = gen-schema.lib;
+        genTypes = gen-types.lib;
       };
     };
 }

@@ -167,6 +167,61 @@ in
       });
       expected = true;
     };
+    # A dot anywhere in the name is E1, not only between two segments — the bare-key predicate is a
+    # containment test over the whole name, so its boundaries are pinned at both ends.
+    test-e1-dotted-key-leading = {
+      expr = throws (mkSchema {
+        aspect = theme;
+        fields = {
+          ".b" = {
+            default = 1;
+          };
+        };
+      });
+      expected = true;
+    };
+    test-e1-dotted-key-trailing = {
+      expr = throws (mkSchema {
+        aspect = theme;
+        fields = {
+          "a." = {
+            default = 1;
+          };
+        };
+      });
+      expected = true;
+    };
+    # LIVE CONTROL for every E1 arm above: a well-formed field is ACCEPTED. Without it the three
+    # rejections are consistent with a predicate that refuses everything.
+    test-e1-well-formed-field-accepted = {
+      expr =
+        (mkSchema {
+          aspect = theme;
+          fields = {
+            a-b = {
+              default = 1;
+              merge = "append";
+            };
+          };
+        }).strategies;
+      expected = {
+        a-b = "append";
+      };
+    };
+    # `semilattice-set` is E1 here even though the underlying fold implements it: the schema's
+    # strategy set is this library's declared domain, not the fold's capability.
+    test-e1-semilattice-set-rejected = {
+      expr = throws (mkSchema {
+        aspect = theme;
+        fields = {
+          x = {
+            default = [ ];
+            merge = "semilattice-set";
+          };
+        };
+      });
+      expected = true;
+    };
 
     # E2 — strict unknown field, at first force of the result.
     test-e2-strict-unknown = {

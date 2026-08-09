@@ -6,6 +6,7 @@
     gen-bind.url = "github:sini/gen-bind";
     gen-graph.url = "github:sini/gen-graph";
     gen-schema.url = "github:sini/gen-schema";
+    gen-types.url = "github:sini/gen-types";
     # nixpkgs is the CI runner's dependency (nix-unit harness, treefmt) and supplies the `lib` the
     # test modules use. It enters ONLY here (a VALUE in ci/), never a `lib/` dep — the library
     # (../lib) is nixpkgs-lib-free (ci/tests/purity.nix enforces this).
@@ -20,6 +21,7 @@
       gen-bind,
       gen-graph,
       gen-schema,
+      gen-types,
       ...
     }:
     let
@@ -29,6 +31,7 @@
         bind = gen-bind.lib;
         genGraph = gen-graph.lib;
         genSchema = gen-schema.lib;
+        genTypes = gen-types.lib;
       };
       # gen-algebra's fold, exposed directly to the value-parity + label-opacity suites (the real
       # fold, byte-identity is the Spike 5 acceptance gate).

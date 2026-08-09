@@ -1,8 +1,10 @@
-# T9 laziness (L15). Four scoped guarantees. resolveOne (L15.2): a field never read is never
-# resolved — its contribution values are never forced and its refs never followed. Injection
-# (L15.1): wrap time forces nothing in settings/bindings. resolveAll (L15.3): strict in structure
-# but an unread field's FOLD is never computed and resolveRef is never called for it — the deliberate
-# contrast with T5's WHNF strictness pin.
+# T9 laziness (L15). Five scoped guarantees. Schema construction: normalizing a field decides that
+# `default` is PRESENT and never forces what it holds — the field record is checked against a type
+# whose `default` member is `any`, whose verifier discards its argument. resolveOne (L15.2): a field
+# never read is never resolved — its contribution values are never forced and its refs never
+# followed. Injection (L15.1): wrap time forces nothing in settings/bindings. resolveAll (L15.3):
+# strict in structure but an unread field's FOLD is never computed and resolveRef is never called
+# for it — the deliberate contrast with T5's WHNF strictness pin.
 {
   lib,
   genSettings,
@@ -19,6 +21,19 @@ let
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   inherit (fx.aspects) theme terminal;
   member = schema: layers: { inherit schema layers; };
+
+  # ── Schema construction: normalizing a field never forces the `default` VALUE ──
+  # Typing `default` as `any` is what keeps it unforced; typing it as anything checking structure
+  # would force it. Reading the normalized STRATEGY runs the whole field check, so a strategy that
+  # comes back while the default still throws is the discriminating observation.
+  schemaThrowingDefault = mkSchema {
+    aspect = theme;
+    fields = {
+      f = {
+        default = throw "schema default forced at construction";
+      };
+    };
+  };
 
   # ── L15.2: an unread field's throwing contribution is never forced ──
   schema2 = mkSchema {
@@ -121,6 +136,18 @@ let
 in
 {
   flake.tests.laziness = {
+    # Schema construction — the field check completes and yields the strategy while `default` throws.
+    test-schema-default-value-unforced = {
+      expr = schemaThrowingDefault.strategies.f;
+      expected = "replace";
+    };
+    # LIVE CONTROL, same schema, same run: the default really is a throw, and reading it is
+    # observable — without this arm the assertion above cannot tell laziness from an inert value.
+    test-schema-default-value-throws-when-read = {
+      expr = (builtins.tryEval (builtins.deepSeq schemaThrowingDefault.defaults.f null)).success;
+      expected = false;
+    };
+
     # L15.2 — reading `a` succeeds though `b`'s contribution throws.
     test-resolveone-unread-not-forced = {
       expr = res2.value.a;

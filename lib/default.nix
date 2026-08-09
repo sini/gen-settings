@@ -2,24 +2,27 @@
 # structured provenance, and the graduated injection construct.
 #
 # Class B (nixpkgs-lib-free): builtins + gen-prelude, plus gen-algebra (the fold lives there),
-# gen-bind (injection), gen-graph (cycle detection lives there), and gen-schema (the ref DATUM
+# gen-bind (injection), gen-graph (cycle detection lives there), gen-schema (the ref DATUM
 # lives there, beside the reference type whose inhabitants refs are — so gen-schema is now an
 # IMPORTED input, not the interface-only dependency it once was; the id_hash law it defines is the
-# same law either way). CI purity invariant enforces the boundary.
+# same law either way), and gen-types (structural checking — what a well-formed schema field IS is
+# stated there, while the E1 diagnostic stays here). CI purity invariant enforces the boundary.
 #
 # `genGraph` is the gen-graph library; the local `graph` below is this library's own ref-graph
 # module. The two names are kept distinct because both are in scope here and `resolve.nix` binds
-# the local one.
+# the local one. `genTypes` carries the prefix for a second reason: bare `types` would read as
+# nixpkgs `lib.types`, the very tether Class B forbids.
 {
   prelude,
   algebra,
   bind,
   genGraph,
   genSchema,
+  genTypes,
 }:
 let
   display = import ./display.nix { inherit prelude; };
-  schema = import ./schema.nix { inherit prelude; };
+  schema = import ./schema.nix { inherit prelude genTypes; };
   ref = import ./ref.nix { inherit genSchema; };
   graph = import ./graph.nix {
     inherit

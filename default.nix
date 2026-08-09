@@ -1,8 +1,9 @@
 # Standalone (non-flake) entry. Flake consumers should use the `.lib` output.
 #
 # gen-settings is a function of `prelude` (gen-prelude), `algebra` (gen-algebra — the fold),
-# `bind` (gen-bind — injection), `genGraph` (gen-graph — cycle detection) and `genSchema`
-# (gen-schema — the ref datum and its scan). The defaults fetch
+# `bind` (gen-bind — injection), `genGraph` (gen-graph — cycle detection), `genSchema`
+# (gen-schema — the ref datum and its scan) and `genTypes` (gen-types — the structural checkers
+# stating what a well-formed schema field is). The defaults fetch
 # the flake-locked revs (content-addressed via narHash, so the plain-import path stays pure and in
 # lockstep with the flake output). Pass any explicitly to override (e.g. a local checkout).
 {
@@ -23,6 +24,7 @@
   # goes through gen-schema's own standalone entry, which self-pins that half from its own lock.
   # `prelude` and `algebra` are still handed down, so the shared halves stay this library's.
   genSchema ? import "${fetch "gen-schema"}" { inherit prelude algebra; },
+  genTypes ? import "${fetch "gen-types"}/lib" { inherit prelude; },
 }:
 import ./lib {
   inherit
@@ -31,5 +33,6 @@ import ./lib {
     bind
     genGraph
     genSchema
+    genTypes
     ;
 }

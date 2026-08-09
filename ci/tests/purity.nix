@@ -1,7 +1,9 @@
 # Purity invariant (roadmap §5, Class B): the gen-settings library (./lib) is nixpkgs-lib-free. All
-# machinery is builtins + gen-prelude, plus the injected gen-algebra fold and gen-bind wrap; gen-schema
-# is consumed interface-only (the id_hash field), never imported. A stray `lib.`/`evalModules`/`nixpkgs`
-# tether in the library source fails CI. Scope: lib/**.nix + the root flake.nix + default.nix. NOT ci/.
+# machinery is builtins + gen-prelude, plus the injected gen-algebra fold, gen-bind wrap, gen-graph
+# cycle detection, gen-schema ref datum and gen-types schema-shape checkers — every one of which is
+# itself nixpkgs-lib-free, so importing them introduces none of the forbidden tokens below. A stray
+# `lib.`/`evalModules`/`nixpkgs` tether in the library source fails CI. Scope: lib/**.nix + the root
+# flake.nix + default.nix. NOT ci/.
 { genPrelude, lib, ... }:
 let
   libDir = ../../lib;

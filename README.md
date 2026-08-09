@@ -4,7 +4,7 @@
 
 gen-settings resolves an aspect's settings — a static, introspectable schema of `{ default; merge }` leaves — against an ordered list of override layers, producing a resolved value plus a full per-field provenance chain. It adds refs-as-data (identity-bearing cross-aspect references with static cycle detection), structured provenance, and the graduated injection construct (`injectAspectSettings` / `assembleHost`).
 
-**Class B (nixpkgs-lib-free).** The library is `builtins` + [gen-prelude](https://github.com/sini/gen-prelude), plus the [gen-algebra](https://github.com/sini/gen-algebra) fold (`foldLayersTraced` — the single fold implementation, never reimplemented here), [gen-bind](https://github.com/sini/gen-bind) injection and [gen-graph](https://github.com/sini/gen-graph) cycle detection (`cyclePaths` — the cycle-finding algorithm is never reimplemented here either; what stays is the E3 diagnostic). [gen-schema](https://github.com/sini/gen-schema) supplies the **ref datum** — the inert record and its structural scan live there, beside the option type whose inhabitants refs are — and the `id_hash` law every ref target must satisfy. A CI purity invariant (`ci/tests/purity.nix`) keeps that boundary honest.
+**Class B (nixpkgs-lib-free).** The library is `builtins` + [gen-prelude](https://github.com/sini/gen-prelude), plus the [gen-algebra](https://github.com/sini/gen-algebra) fold (`foldLayersTraced` — the single fold implementation, never reimplemented here), [gen-bind](https://github.com/sini/gen-bind) injection and [gen-graph](https://github.com/sini/gen-graph) cycle detection (`cyclePaths` — the cycle-finding algorithm is never reimplemented here either; what stays is the E3 diagnostic). [gen-schema](https://github.com/sini/gen-schema) supplies the **ref datum** — the inert record and its structural scan live there, beside the option type whose inhabitants refs are — and the `id_hash` law every ref target must satisfy. [gen-types](https://github.com/sini/gen-types) supplies the **schema-shape predicates**: what a well-formed field is, is a structural checker there, never a hand-rolled test here; the E1 diagnostic is what stays. A CI purity invariant (`ci/tests/purity.nix`) keeps that boundary honest.
 
 ## Table of Contents
 
@@ -77,7 +77,7 @@ resolved.value    # => { "allowed-tcp" = [ 22 80 443 ]; hostname = "axon-01"; }
 
 ### Schemas
 
-`mkSchema { aspect; fields; }` normalizes an aspect's leaves into `{ aspect; fields; strategies; defaults; }` — plain data, always introspectable. Field names are **bare keys** (`allowed-tcp`, never `firewall.allowed-tcp`); `default` is mandatory on every leaf; `merge ∈ { replace, append, recursive }`. Shape violations are the definition-time error E1.
+`mkSchema { aspect; fields; }` normalizes an aspect's leaves into `{ aspect; fields; strategies; defaults; }` — plain data, always introspectable. Field names are **bare keys** (`allowed-tcp`, never `firewall.allowed-tcp`); `default` is mandatory on every leaf; `merge ∈ { replace, append, recursive }`. Those three obligations are stated as gen-types checkers and the value of `default` is typed `any`, so verifying a field never forces what it holds. Shape violations are the definition-time error E1, which is gen-settings' own diagnostic over gen-types' predicate.
 
 ### Layers and the Fold
 
