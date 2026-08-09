@@ -1,6 +1,7 @@
 # Shared fixtures — aspect registry-entry stand-ins (identity-bearing) and layer/entity helpers.
-# gen-settings consumes gen-schema INTERFACE-ONLY: an "entry" is any value carrying `name` +
-# `id_hash`. These plain records model that contract without importing gen-schema.
+# An "entry" is any value carrying `name` + `id_hash` — gen-settings never asks for more, and the
+# ref datum's identity law is stated over exactly that. These plain records model the contract
+# structurally, so the suite exercises the law rather than a particular registry that satisfies it.
 { ... }:
 let
   mkAspect = name: id_hash: { inherit name id_hash; };
