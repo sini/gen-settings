@@ -47,12 +47,26 @@ let
   # and never reads them; the value fold is independent of them, L4).
   layerLabel = l: { inherit (l) scope rendered via; };
 
-  # Raw (ref-inert) fold + structured provenance + attr-name-level strict scan.
+  # The refinement this library hands to the traced fold as gen-algebra's `entryTransform`: an
+  # entry's structured coordinates, its hop records, and the PER-ENTRY-LAZY substitution of that
+  # entry's own refs. `value` resolves only when itself forced (L15.4) — forcing the chain spine,
+  # this entry's coordinates, or any sibling computes `refs` (structurally strict over the
+  # contribution's shape) but follows no ref. gen-algebra's non-interference law is what carries
+  # that through the fold rather than around it, and the ref vocabulary below never crosses over.
+  # `resolverFor` is field-indexed because E4/E5 name the SOURCE field as well as the target.
+  refineEntry = resolverFor: field: entry: {
+    inherit (entry.layer) scope rendered via;
+    refs = map (r: { inherit (r) at aspect path; }) (refsIn entry.value);
+    value = substDeep (resolverFor field) entry.value;
+  };
+
+  # Raw (ref-inert) value fold + refined provenance + attr-name-level strict scan.
   foldMember =
     {
       schema,
       layers,
       strict,
+      resolverFor,
     }:
     let
       schemaFields = attrNames schema.fields;
@@ -79,6 +93,7 @@ let
         layers = map (l: l.value) layers;
         layerNames = map layerLabel layers;
         inherit defaultLabel;
+        entryTransform = refineEntry resolverFor;
       };
 
       # Strict mode: an undeclared contribution is E2, fired when the result spine is first
@@ -97,18 +112,9 @@ let
     in
     {
       rawValue = guard folded.value;
-      rawProvenance = guard folded.provenance;
+      provenance = guard folded.provenance;
       inherit violations;
     };
-
-  # A provenance entry: structured coordinates + hop records + PER-ENTRY-LAZY substituted value.
-  # `value` substitutes only this entry's own refs and only when itself forced (L15.4); forcing
-  # the chain spine or any sibling entry computes `refs` (structurally strict) but never resolves.
-  mkProvEntry = resolve: entry: {
-    inherit (entry.layer) scope rendered via;
-    refs = map (r: { inherit (r) at aspect path; }) (refsIn entry.value);
-    value = substDeep resolve entry.value;
-  };
 in
 {
   inherit substDeep;
@@ -132,11 +138,16 @@ in
       strict ? true,
     }:
     let
-      m = foldMember { inherit schema layers strict; };
+      # Standalone: one resolver serves every field, so the field index is discarded here. The
+      # batch resolver in resolveAll is the one that uses it.
+      m = foldMember {
+        inherit schema layers strict;
+        resolverFor = _field: resolveRef;
+      };
     in
     {
       value = mapAttrs (_: v: substDeep resolveRef v) m.rawValue;
-      provenance = mapAttrs (_: entries: map (mkProvEntry resolveRef) entries) m.rawProvenance;
+      inherit (m) provenance;
     };
 
   # resolveAll { batch } -> { value; provenance; graph; }
@@ -165,6 +176,10 @@ in
             raw = foldMember {
               inherit (m) schema layers;
               strict = m.strict or true;
+              # Knot-tied: the resolver reaches back through `raws`, and nothing forces it until
+              # an entry's own value is forced — by which point `raws` is the value we came
+              # through. The fold's non-interference law is what keeps that from being a cycle.
+              resolverFor = resolveRefFrom m.schema.aspect;
             };
           };
         }) keyed
@@ -217,14 +232,9 @@ in
         in
         mapAttrs (field: v: substDeep (resolveRefFrom e.member.schema.aspect field) v) e.raw.rawValue;
 
-      resolvedProvOf =
-        h:
-        let
-          e = raws.${h};
-        in
-        mapAttrs (
-          field: entries: map (mkProvEntry (resolveRefFrom e.member.schema.aspect field)) entries
-        ) e.raw.rawProvenance;
+      # The counterpart of resolvedValueOf: the fold already emitted the refined chains, so this
+      # is the read, not a second pass over them.
+      resolvedProvOf = h: raws.${h}.raw.provenance;
 
       # Definition-time gate at first force of the result: E7, then acyclicity (which also forces
       # every contribution to WHNF via the graph scan), then the (still-lazy) resolved attrset.

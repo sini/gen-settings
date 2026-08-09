@@ -109,6 +109,11 @@ let
   };
 
   # ── shadowed-ref provenance laziness (L15.4) ──
+  # These three pin the property through THIS composition — a ref whose target aspect is absent
+  # from the batch. The domain-free statement of the same law is gen-algebra's, over a diverging
+  # entry rather than an absent aspect (`test-entry-transform-*`, ci/tests/rec-fold-layers-traced.nix).
+  # Both are needed: the fold guarantees non-interference, and these show the ref refinement
+  # gen-settings hands it is lazy in the part that follows the ref.
   schemaShadow = mkSchema {
     aspect = fx.aspects.terminal;
     fields = {

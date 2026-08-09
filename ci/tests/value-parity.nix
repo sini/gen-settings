@@ -1,6 +1,15 @@
 # T1 value-parity (L1, L2). The Spike 5 acceptance gate: for ref-free inputs, resolveOne.value is
 # byte-identical to gen-algebra's foldLayers over the same strategies/defaults/layer values — a
 # COMPUTED comparison against the real fold, not hand-written expecteds. Plus the strategy matrix.
+#
+# The expected is computed from foldLayers while the library binds foldLayersTraced, and that is
+# licensed rather than assumed: gen-algebra's own value-identity guards
+# (`test-value-identity-replace` / `-append` / `-recursive` / `-explicit-replace-and-default-only`,
+# ci/tests/rec-fold-layers-traced.nix) prove the two agree on exactly the strategies both accept.
+# `mergeStrategy` (lib/schema.nix) admits exactly that domain — replace, append, recursive, plus
+# the implicit replace its `merge or "replace"` defaulting supplies — so every schema this suite
+# can express falls inside it. The siblings are NOT one primitive: foldLayersTraced also resolves
+# "semilattice-set", which foldLayers refuses. The licence ends where the shared domain does.
 {
   lib,
   genSettings,

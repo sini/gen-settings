@@ -114,7 +114,7 @@ The refusal is deliberately wider than the hazard — a ref-free function refuse
 
 ### Structured Provenance
 
-Every field's provenance is an ordered chain of structured entries `{ scope; rendered; via; value; refs; }` — `scope` carries the given registry entries (identity in ≡ out), `rendered` is display-only, `refs` records each hop. **Per-entry lazy ref substitution:** an entry's `value` substitutes only its own refs and only when itself forced; forcing the chain spine or a sibling entry never resolves a given entry's refs. So a shadowed layer whose contribution refs an absent aspect keeps a fully forceable chain — only forcing that shadowed entry throws.
+Every field's provenance is an ordered chain of structured entries `{ scope; rendered; via; value; refs; }` — `scope` carries the given registry entries (identity in ≡ out), `rendered` is display-only, `refs` records each hop. **Per-entry lazy ref substitution:** an entry's `value` substitutes only its own refs and only when itself forced; forcing the chain spine or a sibling entry never resolves a given entry's refs. So a shadowed layer whose contribution refs an absent aspect keeps a fully forceable chain — only forcing that shadowed entry throws. The substitution is handed to the fold as gen-algebra's `entryTransform` and emitted by it, not mapped over its output afterwards; the laziness is that hook's non-interference law, and what this library supplies is the ref-specific refinement it applies.
 
 ### Injection
 
