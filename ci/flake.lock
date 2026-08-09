@@ -1541,11 +1541,11 @@
         "gen-types": "gen-types_10"
       },
       "locked": {
-        "lastModified": 1786226110,
-        "narHash": "sha256-sG4fccSXaL1ZGWdEZUkXQLR6vAFEbjWiMYrfoLLEcLo=",
+        "lastModified": 1786246676,
+        "narHash": "sha256-lWcBmuAzAmMZ1Vx6lkZCyQY0Yg7t8B7kv67iXWnN7rY=",
         "owner": "sini",
         "repo": "gen-schema",
-        "rev": "6ba631b60635cb86fb91d146ce7c74cd8f6fbaab",
+        "rev": "2fdb30beb858d00f6cf62025aa742d83c0c86dde",
         "type": "github"
       },
       "original": {
