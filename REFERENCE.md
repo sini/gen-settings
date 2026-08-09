@@ -81,6 +81,11 @@ skipping it fails open — the edge is never derived, the cycle it would have cl
 and the unresolved record leaks into the resolved value as data. This is a user-visible refusal
 contract: a value that once evaluated with a silently-invisible ref now throws.
 
+The refusal is wider than the hazard on purpose (a ref-free function refuses too, at any depth), and
+its error names the reads-visible constructs to route a computed value through. The only sanctioned
+escape is a declared schema-level annotation, never a quieter scan — gen-schema's README, *If the
+refusal is in your way*, carries that path.
+
 ______________________________________________________________________
 
 ## Static dependency graph
