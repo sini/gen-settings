@@ -30,8 +30,6 @@ let
   inherit (display) renderAddress;
   inherit (graph) refGraph assertAcyclic;
 
-  foldLayersTraced = algebra.record.foldLayersTraced;
-
   # Deep ref substitution. Refs are merge-atomic (§2.2): a ref is replaced wholesale, never
   # merged into — so fold-then-substitute equals folding pre-substituted inputs (L3).
   substDeep =
@@ -76,7 +74,7 @@ let
         via = null;
       };
 
-      folded = foldLayersTraced {
+      folded = algebra.record.foldLayersTraced {
         inherit (schema) strategies defaults;
         layers = map (l: l.value) layers;
         layerNames = map layerLabel layers;
