@@ -32,16 +32,20 @@
 #
 #   REPRODUCE by hand. `srcs` entries are FILESYSTEM PATHS to each library's `lib/` directory —
 #   not `<name>` search-path lookups, which resolve only if you also pass a matching `-I` (bare
-#   `nix eval --impure --expr '<gen-prelude>'` fails with "not found in the Nix search path"):
+#   `nix eval --impure --expr '<gen-prelude>'` fails with "not found in the Nix search path").
+#   `gen-schema` is the one exception and points at the REPOSITORY ROOT: its library also needs
+#   gen-merge, so it goes through gen-schema's own standalone entry, as `default.nix` does.
 #
 #     GP=/path/to/gen-prelude/lib; GA=/path/to/gen-algebra/lib
 #     GB=/path/to/gen-bind/lib;    GG=/path/to/gen-graph/lib
+#     GT=/path/to/gen-types/lib;   GS=/path/to/gen-schema
 #     for arm in /tmp/gs-base/lib ./lib; do
 #       for n in 8 10 12 14 16; do
 #         NIX_SHOW_STATS=1 NIX_SHOW_STATS_PATH=/tmp/stats.json \
 #           nix eval --impure --json --expr "import ./ci/perf-bench.nix {
 #             srcs = { gen-settings = $arm; gen-prelude = $GP;
-#                      gen-algebra = $GA; gen-bind = $GB; gen-graph = $GG; };
+#                      gen-algebra = $GA; gen-bind = $GB; gen-graph = $GG;
+#                      gen-types = $GT; gen-schema = $GS; };
 #             stack = \"acyclic\"; n = $n; }"
 #         jq .nrFunctionCalls /tmp/stats.json
 #       done
@@ -55,7 +59,8 @@
 #   multiplies by ~4 for each +2 in `n`. Stating the refutation condition is what makes this a
 #   measurement rather than a boast.
 {
-  srcs, # { gen-settings, gen-prelude, gen-algebra, gen-bind, gen-graph } — lib/ paths
+  srcs, # { gen-settings, gen-prelude, gen-algebra, gen-bind, gen-graph, gen-types } — lib/ paths;
+  # plus gen-schema, which is a REPOSITORY ROOT (see the note above)
   stack, # "acyclic" (the always-taken path) | "backedge" (the positive control)
   n,
 }:
@@ -64,6 +69,8 @@ let
   algebra = import srcs.gen-algebra { inherit prelude; };
   bind = import srcs.gen-bind { inherit prelude; };
   genGraph = import srcs.gen-graph { inherit prelude; };
+  genTypes = import srcs.gen-types { inherit prelude; };
+  genSchema = import srcs.gen-schema { inherit prelude algebra; };
 
   libFn = import srcs.gen-settings;
   gs = libFn (
@@ -73,6 +80,8 @@ let
         algebra
         bind
         genGraph
+        genSchema
+        genTypes
         ;
     }
   );

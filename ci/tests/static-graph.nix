@@ -178,6 +178,18 @@ let
   # the renderer is the only way a TEST can observe it. (Out of band a `nix eval` run does print
   # the message to stderr, which is how the equivalence here was checked.)
 
+  # ── node-key precedence: a DECLARED address outranks the same key reached as a ref TARGET ──
+  # `themeAlias` carries theme's id_hash under a different display name. Identity is the id_hash
+  # and names are display only, so both records claim node key `<theme's id_hash>:f` — one as a
+  # declared field address, one as the address a ref target names. This is the only fixture in the
+  # file that can observe WHICH wins: every other one keys each node from a single source, so all
+  # of them stay green under an inverted precedence.
+  themeAlias = fx.mkAspect "theme-alias" theme.id_hash;
+  graphAliasedTarget = refGraph [
+    (onlyDefault theme "f" "F")
+    (onlyDefault terminal "g" (ref themeAlias [ "f" ]))
+  ];
+
   cyclicBatch = batch2;
   forced = builtins.tryEval (builtins.deepSeq (resolveAll { batch = cyclicBatch; }).value true);
 in
@@ -272,6 +284,29 @@ in
     test-disjoint-cycles-message-golden = {
       expr = renderCycles graphDisjointCycles.cycles;
       expected = "aspect(nginx#00112233).k -> aspect(firewall#f1f2f3f4).h -> aspect(nginx#00112233).k; aspect(theme#a1b2c3d4).f -> aspect(terminal#e5f6a7b8).g -> aspect(theme#a1b2c3d4).f";
+    };
+
+    # ── node-key precedence ──
+    # PREMISE, asserted so the fixture cannot silently stop discriminating: the two aspect records
+    # are the same identity under different names, so they really do collide on one node key.
+    test-aliased-target-premise-one-identity-two-names = {
+      expr = {
+        sameIdentity = themeAlias.id_hash == theme.id_hash;
+        differentName = themeAlias.name != theme.name;
+      };
+      expected = {
+        sameIdentity = true;
+        differentName = true;
+      };
+    };
+    # ...and the DECLARED address is the one that names the node. `theme-alias` here would mean a
+    # node's identity is described by whoever pointed at it rather than by whoever declared it.
+    test-declared-address-wins-a-shared-node-key = {
+      expr = lib.sort lib.lessThan (map (n: n.aspect.name) graphAliasedTarget.nodes);
+      expected = [
+        "terminal"
+        "theme"
+      ];
     };
 
     # assertAcyclic throws on a cyclic graph, is identity on an acyclic one.

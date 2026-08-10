@@ -11,12 +11,17 @@
     let
       # Sibling library paths, resolved from the flake inputs. `gen-settings` is supplied by the
       # driver at runtime so the app measures the working tree, not a pinned copy of itself.
+      # `gen-schema` is the REPOSITORY ROOT, not its `lib/`: its library also needs gen-merge,
+      # which gen-settings has no other use for, so it goes through gen-schema's own standalone
+      # entry exactly as `default.nix` does — the same asymmetry, for the same reason.
       perfSrcs = pkgs.writeText "perf-srcs.nix" ''
         {
           "gen-prelude" = ${inputs.gen-prelude}/lib;
           "gen-algebra" = ${inputs.gen-algebra}/lib;
           "gen-bind" = ${inputs.gen-bind}/lib;
           "gen-graph" = ${inputs.gen-graph}/lib;
+          "gen-types" = ${inputs.gen-types}/lib;
+          "gen-schema" = ${inputs.gen-schema};
         }
       '';
       perfBench = pkgs.writeShellApplication {

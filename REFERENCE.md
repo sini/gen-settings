@@ -103,8 +103,10 @@ refGraph = batch: { nodes; edges; cycles; }
 - `cycles` — `[ [ <address> ] ]`, each an **ordered** address list: consecutive pairs are real
   edges, so the list may be rendered as a traversal. **One representative per cyclic component**,
   rotated to begin at the component's smallest node key — a component holding several distinct
-  cycles reports one of them. Detection is gen-graph's `cyclePaths`; the field-level node key
-  (`id_hash:field`) is what keeps mutually-referring aspects from refusing.
+  cycles reports one of them. Edge derivation is gen-graph's `fromScan` — the scan and the
+  field-address projection are handed to it — and detection is its `cyclePaths`; the field-level
+  node key (`id_hash:field`) is what keeps mutually-referring aspects from refusing, and it
+  crosses into gen-graph as an opaque string.
 
 Pure function of schemas + layer values — `resolveRef` is never invoked, no resolved value is
 computed. **Conservative over pre-fold values** (edges from every default + every layer contribution,
