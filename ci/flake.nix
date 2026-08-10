@@ -37,6 +37,9 @@
       # fold, byte-identity is the Spike 5 acceptance gate).
       genAlgebra = gen-algebra.lib;
       genBind = gen-bind.lib;
+      # The minting authority, exposed directly to the identity-keying suite so its expectation is
+      # computed by calling the primitive rather than transcribed from it.
+      genSchema = gen-schema.lib;
     in
     gen.lib.mkCi {
       inherit inputs;
@@ -45,7 +48,12 @@
       # `nix run ./ci#perf-bench` — the driver for ci/perf-bench.nix.
       extraModules = [ ./perf-bench-app.nix ];
       specialArgs = {
-        inherit genSettings genAlgebra genBind;
+        inherit
+          genSettings
+          genAlgebra
+          genBind
+          genSchema
+          ;
       };
     };
 }

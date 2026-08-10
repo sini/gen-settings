@@ -6,9 +6,16 @@
 # from static content — guarding on it is wrong by construction (Spike 5). Identity keying inherits
 # gen-bind's Cardelli linkset identity (*Program Fragments, Linking, and Modularization*, POPL 1997
 # §3 — linksets carry identity used to resolve duplicates).
+#
+# The (entity, aspect) attachment is a RELATION, so the identity gen-bind keys on is the labelled
+# tuple of its relata, minted by gen-schema's single authority and never composed here. Hashing the
+# STRUCTURE under a canonical encoding is what makes a cross-axis collision INEXPRESSIBLE rather
+# than detected: a flat `<entity>/<aspect>` join is not injective, because the separator can occur
+# inside a relatum, and a repair for that is an invariant someone must maintain.
 {
   prelude,
   bind,
+  genSchema,
 }:
 let
   inherit (builtins)
@@ -102,7 +109,17 @@ let
             settingsKey = a._key;
             bindings = bindings // (a.bindings or { });
           };
-          identity = "${entityOk.id_hash}/${a.aspect.id_hash}";
+          # The relation kind is `attaches`; its relata are labelled `aspect` and `entity`. The label
+          # list carries no ordering obligation — the preimage is an attrset, whose keys render
+          # sorted — so it is spelled in whichever order reads best.
+          identity = genSchema.hashIdentity "attaches" [ "aspect" "entity" ] (
+            k:
+            {
+              aspect = a.aspect.id_hash;
+              entity = entityOk.id_hash;
+            }
+            .${k}
+          );
           idModule = bind.wrapIdentity {
             class = classOk.name;
             module = inj.module;

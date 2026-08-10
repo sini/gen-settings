@@ -3,9 +3,14 @@
 # evalModules keys (no dedup collapse); identical (class, entity, aspect) yields an equal key
 # (evalModules merges once). Class-name-string / missing-id_hash inputs are definition-time errors.
 # E8: duplicate settingsKey within one call is a definition-time error.
+#
+# The stamp itself is the minted `attaches` binding identity — the labelled tuple of the two relata
+# under gen-schema's single minting authority — so the key's identity region is a digest over
+# structure, not a join of the two hashes.
 {
   lib,
   genSettings,
+  genSchema,
   ...
 }:
 let
@@ -67,6 +72,49 @@ let
     modules:
     lib.sort lib.lessThan (lib.evalModules { modules = [ markOpts ] ++ modules; }).config.markers;
 
+  # The minting authority itself, called live from the same fixtures the library sees, so an
+  # expectation cannot drift from the primitive it is about.
+  mintStamp = labels: relata: genSchema.hashIdentity "attaches" labels (k: relata.${k});
+
+  axonFirewall = {
+    aspect = fx.aspects.firewall.id_hash;
+    entity = fx.entities.axon.id_hash;
+  };
+  # The same two values under each other's label.
+  swappedRelata = {
+    aspect = fx.entities.axon.id_hash;
+    entity = fx.aspects.firewall.id_hash;
+  };
+
+  # The cross-axis separator collision: a `/`-bearing relatum on either axis gives two DISTINCT
+  # (entity, aspect) pairs whose flat join is one string. The L14 guard is a presence check, so
+  # neither pair is refused on the way in.
+  collideLeft = {
+    entity = "a/b";
+    aspect = "c";
+  };
+  collideRight = {
+    entity = "a";
+    aspect = "b/c";
+  };
+  oldJoin = p: "${p.entity}/${p.aspect}";
+  keyOfPair =
+    p:
+    (assembleHost {
+      entity = {
+        name = "e";
+        id_hash = p.entity;
+      };
+      class = fx.classes.nixos;
+      aspects = [
+        {
+          aspect = fx.mkAspect "collide" p.aspect;
+          classContent = { };
+          settings = { };
+        }
+      ];
+    }).collide.key;
+
   # E8 — two aspects colliding on one settingsKey.
   e8Call = assembleHost {
     entity = fx.entities.axon;
@@ -89,10 +137,10 @@ let
 in
 {
   flake.tests.identity-keying = {
-    # L14 — key format golden: class.name@entity.id_hash/aspect.id_hash.
+    # L14 — key format golden: class.name@<minted attaches identity>.
     test-key-format-golden = {
       expr = modAxon.key;
-      expected = "nixos@host0axon00000001/f1f2f3f4f5f6f7f8";
+      expected = "nixos@attaches:92fcfa766fc5911824bdf9068aa6dcab633910d4d916f0e9dd9e94a4ba44cdbe";
     };
     # L14 — distinct entities, same aspect → distinct keys.
     test-distinct-entities-distinct-keys = {
@@ -106,7 +154,7 @@ in
     };
     test-cell-key-format = {
       expr = modCell.key;
-      expected = "nixos@cell0siniaxon0004/f1f2f3f4f5f6f7f8";
+      expected = "nixos@attaches:865c4be3fb4cec5394a781ff7dbacc2d3fb6cfd09d774c0db978cc2d30e45778";
     };
     # L14 — distinct keys are NOT dedup-collapsed: both configs survive evalModules.
     test-distinct-both-present = {
@@ -126,6 +174,41 @@ in
         modAxon
       ];
       expected = [ "axon-01" ];
+    };
+
+    # The stamp IS the minted `attaches` binding identity, and the expectation is computed by
+    # calling the authority rather than transcribed from it — so the cell cannot drift from the
+    # primitive. A later change of kind tag or label set fails here instead of silently re-keying
+    # every module.
+    test-stamp-is-minted-attaches = {
+      expr = modAxon.key;
+      expected = "${fx.classes.nixos.name}@${mintStamp [ "aspect" "entity" ] axonFirewall}";
+    };
+
+    # Hashing the structure separates the two pairs a flat join collapsed.
+    test-separator-collision-split = {
+      expr = keyOfPair collideLeft != keyOfPair collideRight;
+      expected = true;
+    };
+    # …and the retired join really did collapse them, so the claim above has a subject rather than
+    # being a refusal about nothing.
+    test-control-old-join-collided = {
+      expr = oldJoin collideLeft == oldJoin collideRight;
+      expected = true;
+    };
+
+    # The label list carries no caller obligation: the preimage is an attrset, whose keys render
+    # sorted, so the spelling in assembleHost may be chosen for readability.
+    test-label-order-free = {
+      expr = mintStamp [ "aspect" "entity" ] axonFirewall == mintStamp [ "entity" "aspect" ] axonFirewall;
+      expected = true;
+    };
+    # …while the VALUES under fixed labels are not free. A digest indifferent to its input would
+    # pass the claim above and fail here.
+    test-control-swapped-values-differ = {
+      expr =
+        mintStamp [ "aspect" "entity" ] axonFirewall != mintStamp [ "aspect" "entity" ] swappedRelata;
+      expected = true;
     };
 
     # L14 — a class-name string (not a registry entry) is a definition-time error.

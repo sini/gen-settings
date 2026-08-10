@@ -218,8 +218,10 @@ assembleHost = {
 }: { <settingsKey> = <identity-keyed module>; }
 ```
 
-Wraps every injected module with `wrapIdentity`, keying by id_hash pairs:
-`"${class.name}@${entity.id_hash}/${aspect.id_hash}"`. Distinct entities (or cells, keyed by
+Wraps every injected module with `wrapIdentity`, keying by the minted `attaches` binding identity
+over the two `id_hash`es — `hashIdentity "attaches" [ "aspect" "entity" ]` under gen-schema's sole
+minting authority — so the key reads `"nixos@attaches:<sha256>"`. The class scopes the key from
+outside the identity and is not a relatum of it. Distinct entities (or cells, keyed by
 canonical cell identity) with the same aspect yield distinct keys (no dedup collapse); identical
 `(class, entity, aspect)` yields an equal key (evalModules merges once). A class-name string or an
 `entity`/cell without `id_hash` is a definition-time error (forced at first force of the result).

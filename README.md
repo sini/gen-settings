@@ -118,7 +118,7 @@ Every field's provenance is an ordered chain of structured entries `{ scope; ren
 
 ### Injection
 
-`injectAspectSettings` routes class content through gen-bind `wrap` unconditionally (always-wrap, no `isFunction` guard — registered classes are deferredModules that coerce a lone function to `{ imports = [ fn ]; }`). The injected settings binding is namespaced: content reads `settings.<settingsKey>.<field>`. `assembleHost` wraps every module with `wrapIdentity`, keying by **id_hash pairs** (`class.name@entity.id_hash/aspect.id_hash`) so distinct entities/cells are not dedup-collapsed and identical `(class, entity, aspect)` merges once. Duplicate `settingsKey` in one call is E8.
+`injectAspectSettings` routes class content through gen-bind `wrap` unconditionally (always-wrap, no `isFunction` guard — registered classes are deferredModules that coerce a lone function to `{ imports = [ fn ]; }`). The injected settings binding is namespaced: content reads `settings.<settingsKey>.<field>`. `assembleHost` wraps every module with `wrapIdentity`, keying by the **minted `attaches` binding identity** over the entity and aspect `id_hash`es — `class.name@attaches:<sha256>`, where gen-schema's `hashIdentity` is the sole minting authority and the class scopes the key from outside the identity rather than entering it — so distinct entities/cells are not dedup-collapsed and identical `(class, entity, aspect)` merges once. Hashing the structure rather than joining the two hashes is what makes a cross-axis separator collision inexpressible. Duplicate `settingsKey` in one call is E8.
 
 ## API Reference
 

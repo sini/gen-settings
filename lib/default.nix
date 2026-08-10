@@ -41,7 +41,7 @@ let
       display
       ;
   };
-  inject = import ./inject.nix { inherit prelude bind; };
+  inject = import ./inject.nix { inherit prelude bind genSchema; };
 in
 {
   inherit (schema) mkSchema;
