@@ -204,8 +204,16 @@ injectAspectSettings = {
 Always-wrap through gen-bind `wrap` (no `isFunction` guard). The settings binding is namespaced —
 `settings = { ${settingsKey} = <resolved>; }` — so content reads `settings.<key>.<field>`. Injected
 bindings shadow same-named stray module args (`bindWins`); `lib`/`config`/`pkgs` flow from the module
-system (never injected). Wrap forces nothing (L15.1). `wrapped = false` only for the plain-attrset
-passthrough (byte-identical).
+system (never injected). Wrap forces nothing (L15.1).
+
+`wrapped` is **not** a did-this-call-wrap flag — routing through `wrap` is unconditional, so such a flag
+would be constantly true. It is gen-bind's *did I rebind an argument*, and it is `false` whenever gen-bind
+returns the content byte-identical: for the plain-attrset passthrough (gen-bind `lib/wrap.nix:wrapCore`)
+**and** for a function that declares no bound argument (`lib/wrap.nix:wrapFunctionModule`, the
+`boundArgNames == [ ]` passthrough). Measured at `10a1cc3` over four contents — `{ settings, ... }: { }`
+⇒ `true`, `_: { }` ⇒ **`false`**, `{ foo = 1; }` ⇒ **`false`**,
+`{ imports = [ ({ settings, ... }: { }) ]; }` ⇒ `true`. Reading it as "settings were wrapped" therefore
+misclassifies exactly the two passthrough cases.
 
 ### `assembleHost`
 
