@@ -189,17 +189,19 @@ Shared fixtures: `A = { name = "theme"; id_hash = "a1b2c3d4deadbeef"; }`, `B = {
 nix eval --json .#lib --apply 'builtins.attrNames'
 ```
 
-Current output (verbatim):
+Current output (verbatim, re-run at `10a1cc3`):
 
 ```json
-["assembleHost","assertAcyclic","injectAspectSettings","isRef","mkSchema","ref","refGraph","refsIn","renderAddress","resolveAll","resolveOne"]
+["assembleHost","assertAcyclic","injectAspectSettings","isRef","mkSchema","ref","refGraph","refsIn","renderAddress","renderCycles","resolveAll","resolveOne"]
 ```
 
-The export surface is flat — there is no nested namespace. The non-flake entry must agree; it produces the same list:
+The export surface is flat — there is no nested namespace. **This block is one half of a relation, not a standalone figure**: the non-flake entry must produce the *same* list, so the two commands check each other and a divergence on either side is visible without consulting anything external.
 
 ```sh
 nix eval --impure --json --expr 'builtins.attrNames (import ./default.nix { })'
 ```
+
+Both were re-run at `10a1cc3` and agree, twelve names each — matching the count stated under **Exports** above. ★ Until then this block listed **eleven**, omitting `renderCycles`, while the Exports line said twelve: the two halves of the same document disagreed, and the block wearing the word *verbatim* was the wrong one. Re-running both sides is what settles which.
 
 **Checks.** Test-runner invocation (from the repo root; CI runs the same command with `working-directory: ci` — `.github/workflows/ci.yml`, the `check` job's `defaults.run.working-directory` and its `run: nix flake check` step):
 
