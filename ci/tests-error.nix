@@ -68,14 +68,20 @@ let
     }) [ ])
   ];
 
-  # E5 — target present in the batch, path component absent from its resolved value. The target
-  # endpoint here renders a PATH rather than a field, which is the arm `walkPath` reaches.
-  batchE5 = [
+  # E5 — target present in the batch, and the path component decides whether it resolves. The target
+  # endpoint renders a PATH rather than a field, which is the arm `walkPath` reaches.
+  #
+  # Parameterised by that component so the refusal and its control differ in exactly one string, and
+  # differ in nothing else BY CONSTRUCTION: `terminalPathBatch "nope"` walks off the end of the
+  # resolved value, `terminalPathBatch "g"` lands on the field the terminal schema declares. A
+  # control assembled as its own literal could drift from the construction it is a control for; this
+  # one cannot, because there is only one construction.
+  terminalPathBatch = comp: [
     (member (mkSchema {
       aspect = theme;
       fields = {
         f = {
-          default = ref terminal [ "nope" ];
+          default = ref terminal [ comp ];
         };
       };
     }) [ ])
@@ -88,6 +94,8 @@ let
       };
     }) [ ])
   ];
+
+  batchE5 = terminalPathBatch "nope";
 in
 {
   # Same type as `flake.tests`: the same kind of thing, read by the same runner — only the
@@ -137,12 +145,14 @@ in
     # text around the addresses, and which endpoint is rendered in which position. E1 carries no
     # address and is pinned only here.
     #
-    # ★ THE ACCEPTANCE CONTROLS FOR THESE CONSTRUCTIONS ARE ON `flake.tests`, said here because a
-    # cell asserting a refusal is otherwise satisfied by an implementation that refuses everything:
-    # `resolution-errors.test-e1-well-formed-field-accepted` accepts a well-formed field, and the
-    # `ref-substitution` suite resolves refs that answer (`test-default-ref-resolves` and its
-    # neighbours). Both run under the same `nix flake check`; neither can run on this output,
-    # because a control belongs with the quantifier it is a control for.
+    # ★ THE LIVE CONTROL FOR THESE CELLS IS THE LAST ONE IN THIS SUITE, on this output and in this
+    # invocation, for the reason the E6 control above already states: a cell asserting a refusal is
+    # otherwise satisfied by a library that refuses everything it is handed, and a control rules that
+    # out only if it runs when the cells it controls run. `flake.tests` carries further acceptance
+    # coverage of the same constructions — `resolution-errors.test-e1-well-formed-field-accepted`,
+    # and the `ref-substitution` suite's resolving cells. That coverage is ADDITIONAL, not a
+    # substitute: it runs under `nix flake check` and not under `nix-unit --flake ./ci#testsError`,
+    # so a run of this output alone would carry none of it.
     flake.testsError.diagnostic-bytes = {
       # E1 — a dotted field name. Eager and name-level: `mkSchema` refuses at WHNF, so the call is
       # the force point.
@@ -242,6 +252,21 @@ in
           type = "ThrownError";
           msg = "^gen-settings: bad ref path \\(E5\\): aspect\\(theme#a1b2c3d4\\)\\.f -> aspect\\(terminal#e5f6a7b8\\)\\.nope: component 'nope' not present in the resolved value$";
         };
+      };
+
+      # LIVE CONTROL, same run, for every cell above — the E5 construction with its path component
+      # corrected, and nothing else about it changed. It runs the whole path the goldens only ever
+      # see fail: `mkSchema` accepts both schemas, the batch resolves, and `walkPath` walks the one
+      # component it is handed and finds it.
+      #
+      # ★ WITHOUT IT THIS OUTPUT REPORTS SUCCESS ON A LIBRARY THAT NO LONGER RESOLVES ANYTHING.
+      # Measured: breaking `walkPath`'s success branch leaves all six goldens green, because each one
+      # asks only that a refusal arrive with the right bytes, and a library that has stopped resolving
+      # produces refusals more readily, not less. That is the failure mode a refusal suite invites,
+      # and the only cell that can see it is one that requires an answer.
+      test-control-e5-construction-with-corrected-path-resolves = {
+        expr = (resolveAll { batch = terminalPathBatch "g"; }).value.theme.f;
+        expected = "G";
       };
     };
 
