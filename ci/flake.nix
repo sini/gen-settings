@@ -44,9 +44,18 @@
     gen-harness.lib.mkCi {
       inherit inputs;
       name = "gen-settings";
+      # `testModules` is the whole of `flake.tests`, and `flake.tests` is the whole of what the
+      # batch asserter behind `checks.default` quantifies over. Cells whose `expr` CAN ABORT cannot
+      # live there — the asserter forces every `expr` unconditionally, so such a cell crashes the
+      # gate rather than failing it. They are therefore outside this tree by construction, on their
+      # own output: `./tests-error.nix`, read by `nix-unit --flake ./ci#testsError`.
       testModules = ./tests;
-      # `nix run ./ci#perf-bench` — the driver for ci/perf-bench.nix.
-      extraModules = [ ./perf-bench-app.nix ];
+      extraModules = [
+        # `nix run ./ci#perf-bench` — the driver for ci/perf-bench.nix.
+        ./perf-bench-app.nix
+        # `flake.testsError` + its `ci-error` hook.
+        ./tests-error.nix
+      ];
       specialArgs = {
         inherit
           genSettings
