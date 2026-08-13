@@ -2,9 +2,17 @@
 # identity rendering); identity in ≡ identity out. Error codes E1 (schema shape), E2 (strict unknown
 # field), E4 (target not in batch), E5 (bad path), E6 (non-identity ref target), E7 (duplicate key).
 #
-# Pure Nix cannot capture a throw's *message* (builtins.tryEval yields only success:bool), so message
-# goldens are pinned via renderAddress (T5 for E3) and the render components below; the error CODES
-# are pinned by asserting the throw fires (success == false) at the specified force point.
+# Pure Nix cannot capture a throw's *message*: builtins.tryEval yields only success:bool. So what a
+# cell in THIS file pins is that a refusal fires (success == false) at the specified force point, and
+# nothing about which refusal it was — the construction, not the assertion, is what ties each cell to
+# its E-code, and any throw at all satisfies one of them.
+#
+# THE MESSAGE BYTES ARE PINNED, AND NOT HERE. nix-unit's `expectedError` is the only assertion that
+# can hold a message, and it needs an output whose cells' `expr` may abort, so the E1/E4/E5/E6 byte
+# goldens live in `ci/tests-error.nix` on `flake.testsError`. `renderAddress`, which every addressed
+# message composes, is pinned arm by arm in `ci/tests/address-rendering.nix`; E3's rendered cycles are
+# pinned by the `renderCycles` goldens in `ci/tests/static-graph.nix` (T5). E2 and E7 have no byte
+# golden anywhere — their text is held by nothing but the code that writes it.
 {
   lib,
   genSettings,

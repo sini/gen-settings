@@ -38,11 +38,56 @@
   ...
 }:
 let
-  inherit (genSettings) ref;
+  inherit (genSettings)
+    ref
+    mkSchema
+    resolveOne
+    resolveAll
+    ;
   # The suite's own registry-entry stand-ins, so the control's notion of a well-formed target is the
   # one every other cell in this repository uses. `_`-prefixed, hence not itself a test module.
   fx = import ./tests/_fixtures/fixtures.nix { inherit lib; };
-  inherit (fx.aspects) theme;
+  inherit (fx.aspects)
+    theme
+    terminal
+    absent
+    ;
+
+  member = schema: layers: { inherit schema layers; };
+
+  # E4 — the ref's target aspect is absent from the batch. This is the batch-level resolver, the one
+  # that names BOTH endpoints, so its rendering carries the source field.
+  batchE4 = [
+    (member (mkSchema {
+      aspect = theme;
+      fields = {
+        f = {
+          default = ref absent [ "x" ];
+        };
+      };
+    }) [ ])
+  ];
+
+  # E5 — target present in the batch, path component absent from its resolved value. The target
+  # endpoint here renders a PATH rather than a field, which is the arm `walkPath` reaches.
+  batchE5 = [
+    (member (mkSchema {
+      aspect = theme;
+      fields = {
+        f = {
+          default = ref terminal [ "nope" ];
+        };
+      };
+    }) [ ])
+    (member (mkSchema {
+      aspect = terminal;
+      fields = {
+        g = {
+          default = "G";
+        };
+      };
+    }) [ ])
+  ];
 in
 {
   # Same type as `flake.tests`: the same kind of thing, read by the same runner — only the
@@ -73,6 +118,130 @@ in
       test-e6-control-well-formed-target-answers = {
         expr = (ref theme [ "x" ]).aspect.id_hash;
         expected = theme.id_hash;
+      };
+    };
+
+    # THE DIAGNOSTIC BYTES — E1 (schema shape), E4 (target not in batch / no resolver), E5 (bad ref
+    # path). Each message is a CONTRACT, and each is pinned here to its exact bytes.
+    #
+    # ★ WHY NOT `throws … == true`, WHICH `tests/resolution-errors.nix` ALREADY CARRIES FOR EVERY
+    # ONE OF THESE. That predicate is a boolean, and a boolean cannot see the thing under test.
+    # Measured on this library: dropping `field = sourceField` from BOTH the E4 and E5 renderings,
+    # and replacing the E1 dotted-key message wholesale, each leave the entire suite green. A
+    # refusal that still fires while saying something else satisfies a `throws` cell and fails every
+    # cell below. Adding the boolean here would restate the gap as its own fix.
+    #
+    # ★ WHERE THE ADDRESSES COME FROM. E4 and E5 compose their endpoints from `renderAddress`, whose
+    # three arms are pinned directly — one cell per arm, none composed — in
+    # `tests/address-rendering.nix`. The goldens below therefore pin what that file cannot: the fixed
+    # text around the addresses, and which endpoint is rendered in which position. E1 carries no
+    # address and is pinned only here.
+    #
+    # ★ THE ACCEPTANCE CONTROLS FOR THESE CONSTRUCTIONS ARE ON `flake.tests`, said here because a
+    # cell asserting a refusal is otherwise satisfied by an implementation that refuses everything:
+    # `resolution-errors.test-e1-well-formed-field-accepted` accepts a well-formed field, and the
+    # `ref-substitution` suite resolves refs that answer (`test-default-ref-resolves` and its
+    # neighbours). Both run under the same `nix flake check`; neither can run on this output,
+    # because a control belongs with the quantifier it is a control for.
+    flake.testsError.diagnostic-bytes = {
+      # E1 — a dotted field name. Eager and name-level: `mkSchema` refuses at WHNF, so the call is
+      # the force point.
+      test-e1-dotted-key-message = {
+        expr = mkSchema {
+          aspect = theme;
+          fields = {
+            "a.b" = {
+              default = 1;
+            };
+          };
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: schema \\(E1\\): field name 'a\\.b' must be a bare key \\(no dots\\) — namespacing under the aspect happens at the consumer boundary$";
+        };
+      };
+
+      # E1 — a leaf with no `default`. Per-field and lazy, so reaching the field is the force point:
+      # `.strategies.x` is the cheapest read that runs `normField` on `x`.
+      test-e1-missing-default-message = {
+        expr =
+          (mkSchema {
+            aspect = theme;
+            fields = {
+              x = {
+                merge = "replace";
+              };
+            };
+          }).strategies.x;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: schema \\(E1\\): field 'x' has no 'default' — default is mandatory on every leaf$";
+        };
+      };
+
+      # E1 — a merge strategy outside the schema's declared set. The message quotes the offending
+      # strategy AND enumerates the admissible ones, so the golden pins the enumeration too: this is
+      # the one message whose text a consumer reads as documentation.
+      test-e1-bad-merge-message = {
+        expr =
+          (mkSchema {
+            aspect = theme;
+            fields = {
+              x = {
+                default = 1;
+                merge = "bogus";
+              };
+            };
+          }).strategies.x;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: schema \\(E1\\): field 'x' has unknown merge strategy 'bogus' \\(expected replace\\|append\\|recursive\\)$";
+        };
+      };
+
+      # E4 — batch resolution, target absent. BOTH endpoints are named (L10), and the source endpoint
+      # is field-indexed: `resolverFor` takes the field precisely so this line can say `.f`. A
+      # field-blind resolver still refuses, still names the target, and drops the `.f` — which is the
+      # byte this cell exists to hold.
+      test-e4-target-absent-message = {
+        expr = (resolveAll { batch = batchE4; }).value.theme.f;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: unresolved ref \\(E4\\): aspect\\(theme#a1b2c3d4\\)\\.f references aspect\\(absent#99998888\\) which is not present in the batch$";
+        };
+      };
+
+      # E4 — the OTHER E4, from `resolveOne`'s default resolver. Standalone resolution has no batch
+      # and no source field to name, so this message renders one endpoint where the batch-level E4
+      # renders two. Two texts share the code; a golden for either says nothing about the other.
+      test-e4-no-resolver-message = {
+        expr =
+          (resolveOne {
+            schema = mkSchema {
+              aspect = theme;
+              fields = {
+                f = {
+                  default = ref terminal [ "g" ];
+                };
+              };
+            };
+            layers = [ ];
+          }).value.f;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: unresolved ref \\(E4\\): no resolveRef supplied to resolveOne for target aspect\\(terminal#e5f6a7b8\\)$";
+        };
+      };
+
+      # E5 — target present, path component missing. The source endpoint renders a FIELD and the
+      # target endpoint renders a PATH, so this one message exercises two different arms of
+      # `renderAddress` in two positions, and the golden pins which is which.
+      test-e5-bad-path-message = {
+        expr = (resolveAll { batch = batchE5; }).value.theme.f;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: bad ref path \\(E5\\): aspect\\(theme#a1b2c3d4\\)\\.f -> aspect\\(terminal#e5f6a7b8\\)\\.nope: component 'nope' not present in the resolved value$";
+        };
       };
     };
 
