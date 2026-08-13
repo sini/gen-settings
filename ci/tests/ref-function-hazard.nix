@@ -29,6 +29,8 @@ let
     refGraph
     assertAcyclic
     ref
+    resolveOne
+    resolveAll
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   inherit (fx.aspects) theme terminal;
@@ -68,6 +70,31 @@ let
   ];
   # E3 fires from `cycles`, which is why the force point is the cycle list, not the graph record.
   graphRefuses = batch: throws (assertAcyclic (refGraph batch)).cycles;
+
+  # ── pair 3: the same contract at the SUBSTITUTION rather than the scan ──
+  # One `resolveOne` application per construction, so the two halves asserted below come from ONE
+  # call. The constructions differ in exactly one thing: whether the ref sits in the field's value
+  # or inside a function body in it.
+  substSubject =
+    value:
+    resolveOne {
+      schema = mkSchema {
+        aspect = theme;
+        fields = {
+          f = {
+            default = value;
+          };
+        };
+      };
+      layers = [ ];
+      resolveRef = _: "RESOLVED";
+    };
+  oneFn = substSubject (_: r);
+  oneData = substSubject r;
+  bothHalves = one: [
+    (throws one.value)
+    (throws one.provenance)
+  ];
 in
 {
   flake.tests.ref-function-hazard = {
@@ -116,6 +143,65 @@ in
         (onlyDefault terminal "g" "concrete")
       ];
       expected = false;
+    };
+
+    # ── pair 3: the SUBSTITUTION's half of the same domain ──
+    # The scan derives the graph; substitution produces the value. If substitution admitted an
+    # input the scan refuses, a value would be produced from an input no edge was ever derived
+    # over — so the two must accept the same inputs, and the pairs above see only one of them.
+    #
+    # THE DISCRIMINATOR, and it is `resolveOne`: its VALUE half reaches the substitution without
+    # passing the scan, so this pair is where the two could disagree and did. Asserted as a list of
+    # both halves of one call rather than a conjunction, so a failure names which half — under the
+    # skipping dispatch this cell read `[ false true ]`, the value arm handing back the lambda
+    # while the provenance arm of the very same call refused it.
+    test-one-call-refuses-the-function-on-both-halves = {
+      expr = bothHalves oneFn;
+      expected = [
+        true
+        true
+      ];
+    };
+    # CONTROL: the same construction with the ref in DATA answers on both halves, so the row above
+    # is not satisfied by a resolver that refuses everything.
+    test-control-one-call-resolves-the-ref-in-data-on-both-halves = {
+      expr = bothHalves oneData;
+      expected = [
+        false
+        false
+      ];
+    };
+    # CONTROL: and it SUBSTITUTES rather than merely not throwing — the ref does not survive.
+    test-control-substitution-replaces-the-ref-in-data = {
+      expr = oneData.value.f;
+      expected = "RESOLVED";
+    };
+
+    # REGRESSION, NOT A DISCRIMINATOR, and the distinction is the point. `resolveAll` gates on the
+    # graph before any value, so the scan refuses the function before substitution is ever reached
+    # and this pair reads the same on both sides of the dispatch change. It is here because the
+    # value-level behaviour of the other public resolver is worth holding, not because it can see
+    # what pair 3 sees.
+    test-resolveAll-refuses-the-function-before-any-value = {
+      expr =
+        throws
+          (resolveAll {
+            batch = [
+              (onlyDefault theme "f" (_: r))
+              (onlyDefault terminal "g" "G")
+            ];
+          }).value;
+      expected = true;
+    };
+    test-control-resolveAll-resolves-the-ref-in-data = {
+      expr =
+        (resolveAll {
+          batch = [
+            (onlyDefault theme "f" r)
+            (onlyDefault terminal "g" "G")
+          ];
+        }).value.theme.f;
+      expected = "G";
     };
   };
 }

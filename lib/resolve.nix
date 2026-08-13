@@ -23,6 +23,8 @@ let
     foldl'
     isAttrs
     isList
+    isFunction
+    typeOf
     head
     seq
     ;
@@ -30,18 +32,77 @@ let
   inherit (display) renderAddress;
   inherit (graph) refGraph assertAcyclic;
 
+  # The ground types of Nix's value language: the leaves substitution returns untouched. `set` and
+  # `list` are the composites it descends, and a ref is the one leaf it replaces — so naming these
+  # six is what lets the dispatch below enumerate its cases instead of ending in a fall-through.
+  #
+  # A membership SET rather than a list, because this is tested at every leaf of every substituted
+  # value. `builtins.elem` over the same six names walks a list per leaf and measured materially
+  # more expensive on a substitution-heavy workload; this test measured at +1.1% thunks against the
+  # partial dispatch it replaces, with counters BYTE-IDENTICAL to an `else v` control performing no
+  # leaf test at all. Totality is free; the list was what was not. The multiple for the rejected
+  # form is workload- and build-dependent — hoisting alone moves it — so it is not pinned here.
+  leafTypes = {
+    int = true;
+    float = true;
+    bool = true;
+    string = true;
+    path = true;
+    "null" = true;
+  };
+
   # Deep ref substitution. Refs are merge-atomic (§2.2): a ref is replaced wholesale, never
   # merged into — so fold-then-substitute equals folding pre-substituted inputs (L3).
+  #
+  # ★ THE DISPATCH IS TOTAL, AND IT REFUSES WHAT THE SCAN REFUSES. `refsIn` derives the dependency
+  #   graph and its domain is data: a function in a scanned position is refused there, never
+  #   skipped as a leaf. This produces the value. Were substitution to admit an input the scan
+  #   refuses, a value would be produced from an input no edge was ever derived over — and the
+  #   static/applicative discipline `graph.nix` cites (Mokhov, Mitchell & Peyton Jones, ICFP 2018,
+  #   §3) is precisely the requirement that the extracted dependencies and the produced value range
+  #   over the same inputs. So the residual case throws rather than falling through, and it throws
+  #   HERE: this is the single substitution primitive both `resolveOne` and `resolveAll` reach a
+  #   resolved value through, so refusing at this point removes the case instead of catching it at
+  #   one of them and leaving the other open.
+  #
+  #   Two arms reach the same refusal, and they are not redundant. `isFunction` is the case that
+  #   exists — the one the scan refuses and the one a consumer can write. The membership test after
+  #   it is what makes the dispatch total: every value the language does not offer as a leaf is
+  #   refused, and `lambda` is merely its only inhabitant today. The message names the type it was
+  #   handed rather than saying "function", so the second arm is not a message written for a value
+  #   nobody can construct.
+  #
+  # ★ THE MESSAGE CARRIES NO E-CODE, DELIBERATELY. Whether a refusal about the ref datum — whose
+  #   machinery lives in the library that owns that datum — speaks in this library's E-vocabulary
+  #   is an open question this text is written not to prejudge. What it does assert is the
+  #   POSITION: the field-headed address of the value that carried the offending input. Settling
+  #   the vocabulary changes the prefix and nothing else here.
+  #
+  # ★ THE POSITION IS THE FIELD, AND IS FIXED FOR THE DESCENT. It is not extended with each attr
+  #   name and list index walked into, because that subpath is neither free nor missing. Not free:
+  #   accumulating one allocates a record at every node of every conforming value, and measured as
+  #   the dominant cost of this whole change — paid forever, to sharpen a message that conforming
+  #   input never produces. Not missing: the scan refuses the same value and its refusal carries its
+  #   own subpath, so on `{ colors = [ "ok" (_: someRef) ]; }` the pair reports `aspect(theme#…).f`
+  #   here and `colors.1` there. The field is also the coordinate E2, E4 and E5 already blame.
+  refuse =
+    at: v:
+    throw "gen-settings: cannot substitute into a value of type '${typeOf v}': ${renderAddress at} — substitution ranges over the same data the ref scan derives the dependency graph from, and that scan refuses this position rather than treating it as a leaf, so a value produced here would come from an input no dependency edge was ever derived over";
+
   substDeep =
-    resolve: v:
+    resolve: at: v:
     if isRef v then
       resolve { inherit (v) aspect path; }
     else if isAttrs v then
-      mapAttrs (_: e: substDeep resolve e) v
+      mapAttrs (_: e: substDeep resolve at e) v
     else if isList v then
-      map (substDeep resolve) v
+      map (substDeep resolve at) v
+    else if isFunction v then
+      refuse at v
+    else if leafTypes ? ${typeOf v} then
+      v
     else
-      v;
+      refuse at v;
 
   # Structured layer label — fully opaque to foldLayersTraced (it stores labels into provenance
   # and never reads them; the value fold is independent of them, L4).
@@ -53,11 +114,18 @@ let
   # this entry's coordinates, or any sibling computes `refs` (structurally strict over the
   # contribution's shape) but follows no ref. gen-algebra's non-interference law is what carries
   # that through the fold rather than around it, and the ref vocabulary below never crosses over.
-  # `resolverFor` is field-indexed because E4/E5 name the SOURCE field as well as the target.
-  refineEntry = resolverFor: field: entry: {
+  # `resolverFor` is field-indexed because E4/E5 name the SOURCE field as well as the target, and
+  # `sourceAspect` is taken for the same reason one hop further: with it, the position a refusal
+  # blames is the same field-headed address those diagnostics render. The parameter carries the
+  # `source` prefix `resolveAll`'s resolver already uses, since `aspect` is also the name of the
+  # TARGET coordinate each hop record below inherits from the scan.
+  refineEntry = sourceAspect: resolverFor: field: entry: {
     inherit (entry.layer) scope rendered via;
     refs = map (r: { inherit (r) at aspect path; }) (refsIn entry.value);
-    value = substDeep (resolverFor field) entry.value;
+    value = substDeep (resolverFor field) {
+      aspect = sourceAspect;
+      inherit field;
+    } entry.value;
   };
 
   # Raw (ref-inert) value fold + refined provenance + attr-name-level strict scan.
@@ -93,7 +161,7 @@ let
         layers = map (l: l.value) layers;
         layerNames = map layerLabel layers;
         inherit defaultLabel;
-        entryTransform = refineEntry resolverFor;
+        entryTransform = refineEntry schema.aspect resolverFor;
       };
 
       # Strict mode: an undeclared contribution is E2, fired when the result spine is first
@@ -146,7 +214,13 @@ in
       };
     in
     {
-      value = mapAttrs (_: v: substDeep resolveRef v) m.rawValue;
+      value = mapAttrs (
+        field: v:
+        substDeep resolveRef {
+          inherit (schema) aspect;
+          inherit field;
+        } v
+      ) m.rawValue;
       inherit (m) provenance;
     };
 
@@ -229,8 +303,11 @@ in
         h:
         let
           e = raws.${h};
+          inherit (e.member.schema) aspect;
         in
-        mapAttrs (field: v: substDeep (resolveRefFrom e.member.schema.aspect field) v) e.raw.rawValue;
+        mapAttrs (
+          field: v: substDeep (resolveRefFrom aspect field) { inherit aspect field; } v
+        ) e.raw.rawValue;
 
       # The counterpart of resolvedValueOf: the fold already emitted the refined chains, so this
       # is the read, not a second pass over them.

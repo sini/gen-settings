@@ -96,6 +96,33 @@ let
   ];
 
   batchE5 = terminalPathBatch "nope";
+
+  # THE SUBSTITUTION'S DOMAIN. `resolveOne` applied ONCE per construction, so the two arms asserted
+  # below are halves of one result rather than two similar calls — which is what lets them witness
+  # a result disagreeing with itself rather than two exports disagreeing with each other.
+  #
+  # The two constructions differ in exactly one thing, and nothing else, BY CONSTRUCTION: the same
+  # `ref` value sits in the field's value, or inside a function body in it. A control assembled as
+  # its own literal could drift from the construction it controls; this one cannot.
+  substSubject =
+    value:
+    resolveOne {
+      schema = mkSchema {
+        aspect = theme;
+        fields = {
+          f = {
+            default = value;
+          };
+        };
+      };
+      layers = [ ];
+      resolveRef = _: "RESOLVED";
+    };
+  refToTerminal = ref terminal [ "g" ];
+  oneFn = substSubject (_: refToTerminal);
+  oneData = substSubject refToTerminal;
+
+  refuses = e: !(builtins.tryEval (builtins.deepSeq e e)).success;
 in
 {
   # Same type as `flake.tests`: the same kind of thing, read by the same runner — only the
@@ -267,6 +294,107 @@ in
       test-control-e5-construction-with-corrected-path-resolves = {
         expr = (resolveAll { batch = terminalPathBatch "g"; }).value.theme.f;
         expected = "G";
+      };
+    };
+
+    # THE SUBSTITUTION REFUSES WHAT THE SCAN REFUSES — and says so at the position it refuses.
+    #
+    # `refsIn` derives the dependency graph and its domain is data; `substDeep` produces the value.
+    # `resolveOne` is the surface where the difference is observable: its VALUE half reaches
+    # `substDeep` without passing the scan, so while the dispatch ended in a bare `else v` a
+    # function-valued field came back AS THE LAMBDA on that half while the PROVENANCE half of the
+    # SAME call refused it. One call, two answers.
+    #
+    # ★ WHY THE POSITION IS THE ASSERTED THING. `builtins.tryEval` yields only `success`, so a
+    # boolean cell cannot tell a refusal that names the offending field from one that says nothing
+    # useful, and both satisfy it. The golden below is what holds the field-headed address; the
+    # boolean pair beneath it is what holds the AGREEMENT, which no single message can show.
+    #
+    # ★ THE PREFIX IS THE ONE THING NOT PINNED ON PURPOSE. Whether a refusal of this kind speaks in
+    # this library's E-vocabulary is unruled, and the rule under test is the position-naming, not
+    # the vocabulary. Settling it rewrites this one string and nothing else in this suite.
+    flake.testsError.substitution-domain = {
+      test-value-arm-refuses-a-function-and-names-its-field = {
+        expr = oneFn.value.f;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: cannot substitute into a value of type 'lambda': aspect\\(theme#a1b2c3d4\\)\\.f — substitution ranges over the same data the ref scan derives the dependency graph from, and that scan refuses this position rather than treating it as a leaf, so a value produced here would come from an input no dependency edge was ever derived over$";
+        };
+      };
+
+      # THE DISCRIMINATOR: both halves of ONE call. The list is the cell rather than a conjunction
+      # so a failure names WHICH half disagreed — before the dispatch was total this read
+      # `[ false true ]`, and a `&&` would have reported only `false`.
+      #
+      # The provenance half is a boolean HERE and bytes in the cell below, and the split is not
+      # arbitrary. A chain entry carries BOTH vocabularies: its `refs` come from the scan, so a
+      # refusal reached through them is gen-schema's text, while its `value` is this library's own
+      # substitution and refuses in this library's own. Which of the two a deepSeq of the whole
+      # chain surfaces is decided by attr force order and is not a contract — measured, it is not
+      # even stable across shapes of the offending value. So the honest claim for a cell that forces
+      # the whole half is that it refuses, which is exactly a boolean; the bytes belong on a named
+      # force point, and that is the next cell.
+      test-one-call-both-arms-refuse-the-function = {
+        expr = [
+          (refuses oneFn.value)
+          (refuses oneFn.provenance)
+        ];
+        expected = [
+          true
+          true
+        ];
+      };
+
+      # THE PROVENANCE HALF'S OWN BYTES, at the entry's `value` — a NAMED force point, not a deepSeq
+      # of the chain, so which of the entry's two vocabularies answers is decided here rather than by
+      # attr order.
+      #
+      # ★ THIS CELL COVERS A CALL SITE THE GOLDEN ABOVE CANNOT REACH. The two halves of `resolveOne`
+      # arrive at `substDeep` through DIFFERENT positions: the value half through `resolveOne`'s own
+      # `mapAttrs`, the provenance half through `refineEntry`, each supplying the address the refusal
+      # renders. Measured: with `refineEntry`'s address corrupted to name the wrong field, a user
+      # reading this message is told the wrong position and BOTH SUITES STAY GREEN — the golden above
+      # never runs that code. Identical expected bytes to that golden is the assertion, not a
+      # duplication of it: the two halves must blame the same place, and the corruption that reddens
+      # this cell leaves that one green.
+      test-provenance-arm-refuses-a-function-and-names-the-same-field = {
+        expr = (builtins.head oneFn.provenance.f).value;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: cannot substitute into a value of type 'lambda': aspect\\(theme#a1b2c3d4\\)\\.f — substitution ranges over the same data the ref scan derives the dependency graph from, and that scan refuses this position rather than treating it as a leaf, so a value produced here would come from an input no dependency edge was ever derived over$";
+        };
+      };
+
+      # LIVE CONTROL, same run, same construction with the ref in DATA: both halves answer. Without
+      # it the two cells above are satisfied by a `resolveOne` that refuses everything it is handed
+      # — and a library that has stopped resolving produces refusals more readily, not less.
+      test-control-one-call-both-arms-resolve-the-ref-in-data = {
+        expr = [
+          (refuses oneData.value)
+          (refuses oneData.provenance)
+        ];
+        expected = [
+          false
+          false
+        ];
+      };
+
+      # LIVE CONTROL, and the stronger one: substitution is not merely quiet on the data arm, it
+      # SUBSTITUTES. The resolver returns "RESOLVED", so the ref must not survive into the value.
+      test-control-data-arm-substitutes-the-ref = {
+        expr = oneData.value;
+        expected = {
+          f = "RESOLVED";
+        };
+      };
+
+      # LIVE CONTROL for the provenance golden, at the SAME NAMED FORCE POINT it reads. The entry's
+      # `value` on the data construction is the SUBSTITUTED one, so the point that golden inspects is
+      # demonstrably a point that resolves rather than one that refuses whatever it is handed — the
+      # vacuity every cell asserting a refusal invites, checked here where the refusal is asserted.
+      test-control-provenance-arm-substitutes-at-the-same-force-point = {
+        expr = (builtins.head oneData.provenance.f).value;
+        expected = "RESOLVED";
       };
     };
 
