@@ -170,8 +170,11 @@ Shared fixtures: `A = { name = "theme"; id_hash = "a1b2c3d4deadbeef"; }`, `B = {
 **Checked invariants**
 
 - nixpkgs-lib-free — `test-library-source-is-nixpkgs-free` (`ci/tests/purity.nix`) scans `lib/**.nix` plus the root `flake.nix` and `default.nix`, comments stripped, for `nixpkgs`, `lib.types`, `lib.mkOption`, `lib.mkMerge`, `lib.mkForce`, `lib.evalModules`, `evalModules`, `{ lib }`, `{ lib,` (`ci/tests/purity.nix:forbidden`). `ci/` is out of scope by design.
+
 - No hashing — `git grep -n -E 'hashString|builtins\.hash|hashFile' -- lib/` returns nothing (exit `1`). **Two controls, answering different questions.** ① The instrument can read `lib/` at all: `git grep -c -E 'id_hash' -- lib/` hits 7 files. ② **The predicate fires on a known member of the class being swept for** — the *identical* regex run against gen-schema's `lib/` hits `lib/identity.nix`'s `builtins.hashString "sha256" (canonicalPreimage labels valueOf)`, the very digest this library delegates to. ① alone would be satisfied by a regex that could never match anything, so only ② rules out a dead predicate. Relatum identities are read, never minted; the `attaches` binding stamp IS minted, but by calling gen-schema's `hashIdentity` — no digest is computed here.
+
 - No strength/priority machinery — `git grep -n -E 'mkForce|mkOverride|mkDefault|priority|strength' -- lib/` hits only `lib/resolve.nix`'s file-header comment; positive control `git grep -c -E 'merge' -- lib/` hits 3 files.
+
 - Every gen-\* name in `lib/` is an injected dep or this library itself. Stated as a **relation between two commands** rather than a list, so it fails when either side moves (measured at `10a1cc3`):
 
   ```sh
