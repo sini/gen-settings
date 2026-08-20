@@ -74,6 +74,14 @@
           genSchema
           genIdentity
           ;
+        # `prelude`, `genGraph` and `genTypes` reach the suite because `tests/entry.nix` applies the
+        # STANDALONE root entry with explicit arguments — which is what keeps that cell pure, since
+        # supplying every dependency formal means the shim's fetching defaults are never forced.
+        # They are the SAME instances `genSettings` above is built from, so the two sides of that
+        # comparison differ in entry point and in nothing else.
+        prelude = gen-prelude.lib;
+        genGraph = gen-graph.lib;
+        genTypes = gen-types.lib;
       };
     };
 }
