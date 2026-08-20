@@ -25,6 +25,10 @@
   # `prelude` and `algebra` are still handed down, so the shared halves stay this library's.
   genSchema ? import "${fetch "gen-schema"}" { inherit prelude algebra; },
   genTypes ? import "${fetch "gen-types"}/lib" { inherit prelude; },
+  # The one minting authority: a dependency-free leaf, so its lib is a bare value and this
+  # takes no argument. Derived from THIS shim's lock so the whole construction mints through one
+  # encoding — two instances would be two content-address formulas for one node.
+  genIdentity ? import "${fetch "gen-identity"}/lib",
 }:
 import ./lib {
   inherit
@@ -34,5 +38,6 @@ import ./lib {
     genGraph
     genSchema
     genTypes
+    genIdentity
     ;
 }
