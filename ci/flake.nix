@@ -8,6 +8,12 @@
     gen-schema.url = "github:sini/gen-schema";
     gen-types.url = "github:sini/gen-types";
     gen-identity.url = "github:sini/gen-identity";
+    # ★ COLLAPSED ONTO ONE NODE, and done now rather than when it bites. gen-schema carries a
+    # gen-identity of its own, so without this the lock resolves TWO — and two instances of the
+    # MINT are two encoding formulas for one node, which is silent while the revs agree and
+    # silent-and-wrong the moment they diverge. Collapsing while they still agree is free;
+    # collapsing after they diverge is a migration.
+    gen-schema.inputs.gen-identity.follows = "gen-identity";
     # nixpkgs is the CI runner's dependency (nix-unit harness, treefmt) and supplies the `lib` the
     # test modules use. It enters ONLY here (a VALUE in ci/), never a `lib/` dep — the library
     # (../lib) is nixpkgs-lib-free (ci/tests/purity.nix enforces this).

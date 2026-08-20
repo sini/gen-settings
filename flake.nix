@@ -20,6 +20,12 @@
     # gen-schema: a mint reached through a second library is a mint whose identity depends on
     # that library's pin.
     gen-identity.url = "github:sini/gen-identity";
+    # ★ COLLAPSED ONTO ONE NODE, and done now rather than when it bites. gen-schema carries a
+    # gen-identity of its own, so without this the lock resolves TWO — and two instances of the
+    # MINT are two encoding formulas for one node, which is silent while the revs agree and
+    # silent-and-wrong the moment they diverge. Collapsing while they still agree is free;
+    # collapsing after they diverge is a migration.
+    gen-schema.inputs.gen-identity.follows = "gen-identity";
   };
 
   outputs =
