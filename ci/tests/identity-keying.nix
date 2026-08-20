@@ -11,6 +11,7 @@
   lib,
   genSettings,
   genSchema,
+  genIdentity,
   ...
 }:
 let
@@ -74,7 +75,7 @@ let
 
   # The minting authority itself, called live from the same fixtures the library sees, so an
   # expectation cannot drift from the primitive it is about.
-  mintStamp = labels: relata: genSchema.hashIdentity "attaches" labels (k: relata.${k});
+  mintStamp = labels: relata: genIdentity.hashIdentity "attaches" labels (k: relata.${k});
 
   axonFirewall = {
     aspect = fx.aspects.firewall.id_hash;
@@ -138,9 +139,16 @@ in
 {
   flake.tests.identity-keying = {
     # L14 — key format golden: class.name@<minted attaches identity>.
+    # ★ THE GOLDEN DIGESTS MOVED WITH THE PREIMAGE, and that is a priced consequence rather
+    # than a regression. These pinned values were computed under the mint's SCALAR-ONLY
+    # encoding; the encoder now emits an explicit type-tagged structure, so every digest it
+    # produces differs. ADR-0016 ruling 5 is what makes that admissible — id_hash is internal
+    # addressing and nothing durable may depend on it across evaluations — and the same
+    # migration already ran on the mint's own suite. What these cells pin is the FORMAT
+    # (`class.name@<kind>:<64 hex>`) and the STABILITY of the derivation, neither of which moved.
     test-key-format-golden = {
       expr = modAxon.key;
-      expected = "nixos@attaches:92fcfa766fc5911824bdf9068aa6dcab633910d4d916f0e9dd9e94a4ba44cdbe";
+      expected = "nixos@attaches:a7b6185ed4c1efd965fece181c89d1fcc6ddb2473fbf8557b92519cea010afcf";
     };
     # L14 — distinct entities, same aspect → distinct keys.
     test-distinct-entities-distinct-keys = {
@@ -154,7 +162,7 @@ in
     };
     test-cell-key-format = {
       expr = modCell.key;
-      expected = "nixos@attaches:865c4be3fb4cec5394a781ff7dbacc2d3fb6cfd09d774c0db978cc2d30e45778";
+      expected = "nixos@attaches:108bfcab8524fec18b4df1829c8442e9b43dadcdeecc2141c6e99b236409d89d";
     };
     # L14 — distinct keys are NOT dedup-collapsed: both configs survive evalModules.
     test-distinct-both-present = {

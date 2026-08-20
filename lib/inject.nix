@@ -16,6 +16,7 @@
   prelude,
   bind,
   genSchema,
+  genIdentity,
 }:
 let
   inherit (builtins)
@@ -112,7 +113,7 @@ let
           # The relation kind is `attaches`; its relata are labelled `aspect` and `entity`. The label
           # list carries no ordering obligation — the preimage is an attrset, whose keys render
           # sorted — so it is spelled in whichever order reads best.
-          identity = genSchema.hashIdentity "attaches" [ "aspect" "entity" ] (
+          identity = genIdentity.hashIdentity "attaches" [ "aspect" "entity" ] (
             k:
             {
               aspect = a.aspect.id_hash;

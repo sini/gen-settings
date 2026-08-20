@@ -19,6 +19,7 @@
   genGraph,
   genSchema,
   genTypes,
+  genIdentity,
 }:
 let
   display = import ./display.nix { inherit prelude; };
@@ -41,7 +42,14 @@ let
       display
       ;
   };
-  inject = import ./inject.nix { inherit prelude bind genSchema; };
+  inject = import ./inject.nix {
+    inherit
+      prelude
+      bind
+      genSchema
+      genIdentity
+      ;
+  };
 in
 {
   inherit (schema) mkSchema;

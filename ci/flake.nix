@@ -7,6 +7,7 @@
     gen-graph.url = "github:sini/gen-graph";
     gen-schema.url = "github:sini/gen-schema";
     gen-types.url = "github:sini/gen-types";
+    gen-identity.url = "github:sini/gen-identity";
     # nixpkgs is the CI runner's dependency (nix-unit harness, treefmt) and supplies the `lib` the
     # test modules use. It enters ONLY here (a VALUE in ci/), never a `lib/` dep — the library
     # (../lib) is nixpkgs-lib-free (ci/tests/purity.nix enforces this).
@@ -22,6 +23,7 @@
       gen-graph,
       gen-schema,
       gen-types,
+      gen-identity,
       ...
     }:
     let
@@ -32,6 +34,7 @@
         genGraph = gen-graph.lib;
         genSchema = gen-schema.lib;
         genTypes = gen-types.lib;
+        genIdentity = gen-identity.lib;
       };
       # gen-algebra's fold, exposed directly to the value-parity + label-opacity suites (the real
       # fold, byte-identity is the Spike 5 acceptance gate).
@@ -40,6 +43,7 @@
       # The minting authority, exposed directly to the identity-keying suite so its expectation is
       # computed by calling the primitive rather than transcribed from it.
       genSchema = gen-schema.lib;
+      genIdentity = gen-identity.lib;
     in
     gen-harness.lib.mkCi {
       inherit inputs;
@@ -62,6 +66,7 @@
           genAlgebra
           genBind
           genSchema
+          genIdentity
           ;
       };
     };

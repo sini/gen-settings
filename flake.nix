@@ -16,6 +16,10 @@
     gen-graph.url = "github:sini/gen-graph";
     gen-schema.url = "github:sini/gen-schema";
     gen-types.url = "github:sini/gen-types";
+    # The one minting authority, now a dependency-free leaf. Taken directly rather than through
+    # gen-schema: a mint reached through a second library is a mint whose identity depends on
+    # that library's pin.
+    gen-identity.url = "github:sini/gen-identity";
   };
 
   outputs =
@@ -26,6 +30,7 @@
       gen-graph,
       gen-schema,
       gen-types,
+      gen-identity,
       ...
     }:
     {
@@ -36,6 +41,7 @@
         genGraph = gen-graph.lib;
         genSchema = gen-schema.lib;
         genTypes = gen-types.lib;
+        genIdentity = gen-identity.lib;
       };
     };
 }
