@@ -339,6 +339,12 @@ in
           }) keyed
         )
       );
-      graph = theGraph;
+      # checkedGraph, not theGraph: assertAcyclic is check-then-return (identity on an acyclic
+      # graph, E3 on a cyclic one — ci/tests/static-graph.nix's test-assertAcyclic-identity), so
+      # this is byte-identical to theGraph on every acyclic batch and is the one view of validity
+      # `.value` already gates on (:242/:323 above). Returning theGraph here let `.graph` deepSeq
+      # clean on a batch whose `.value` throws E3 — two views of one result disagreeing about
+      # validity (den-hoag-yk07).
+      graph = checkedGraph;
     };
 }

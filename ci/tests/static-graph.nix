@@ -348,5 +348,23 @@ in
         (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchThrow; }).value true)).success;
       expected = false;
     };
+
+    # den-hoag-yk07 — `.graph` is a SECOND view of the same result `.value` gates on, and both must
+    # agree about validity. Before the fix this cell was the bug's own witness: `.value` throws E3
+    # on this cyclic batch (test-forced-throws above) while `.graph` deepSeq'd clean, because
+    # resolveAll returned the unchecked `theGraph` rather than `checkedGraph` under this accessor.
+    test-graph-accessor-throws-on-cycle = {
+      expr =
+        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = cyclicBatch; }).graph true)).success;
+      expected = false;
+    };
+    # Control: on an ACYCLIC batch, assertAcyclic is identity (test-assertAcyclic-identity above),
+    # so `.graph` is byte-identical to the raw `refGraph batch` both before and after routing it
+    # through the check — this cell would hold unchanged whichever of the two the accessor returns,
+    # which is what proves the fix above changes validity-gating and nothing else.
+    test-control-graph-accessor-unchanged-on-acyclic-batch = {
+      expr = (resolveAll { batch = batchPermissive; }).graph == graphPermissive;
+      expected = true;
+    };
   };
 }
