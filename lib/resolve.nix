@@ -16,8 +16,10 @@ let
   inherit (builtins)
     attrNames
     listToAttrs
+    concatStringsSep
     elem
     filter
+    length
     map
     mapAttrs
     foldl'
@@ -29,7 +31,7 @@ let
     seq
     ;
   inherit (ref) isRef refsIn;
-  inherit (display) renderAddress;
+  inherit (display) renderAddress shortHash;
   inherit (graph) refGraph assertAcyclic;
 
   # The ground types of Nix's value language: the leaves substitution returns untouched. `set` and
@@ -226,10 +228,11 @@ in
 
   # resolveAll { batch } -> { value; provenance; graph; }
   #   batch = [ { schema; layers; key ? <aspect name>; strict ? true; } ]
-  # Strict in structure, lazy in resolution: first force runs the E7 duplicate-key check and the
-  # conservative graph acyclicity check (L8/L17) — forcing every contribution position to WHNF —
-  # before any resolved value. Ref routing knot-ties by id_hash; laziness supplies evaluation
-  # order, static acyclicity guarantees productivity (no toposort needed or performed).
+  # Strict in structure, lazy in resolution: first force runs the E7 checks — duplicate display
+  # key AND duplicate batch identity — and the conservative graph acyclicity check (L8/L17) —
+  # forcing every contribution position to WHNF — before any resolved value. Ref routing
+  # knot-ties by id_hash; laziness supplies evaluation order, static acyclicity guarantees
+  # productivity (no toposort needed or performed).
   resolveAll =
     { batch }:
     let
@@ -241,23 +244,39 @@ in
       theGraph = refGraph batch;
       checkedGraph = assertAcyclic theGraph;
 
+      # The batch grouped by IDENTITY — the one index. `raws` is built from it and the E7
+      # identity refusal below reads it, so a keying change cannot leave the guard behind (the
+      # display axis and the identity axis were previously two independently-derived indexes with
+      # an assumed, unenforced bijection between them — den-hoag-dz8j). ADR-0016 leaves how two
+      # members at one identity COMPOSE unsettled (premise-document OPEN 2.C); refusing by name
+      # decides nothing about that and is the arm it names as available, so this collapses to a
+      # named E7 rather than a silent first-wins fold or an invented precedence rule. It is also
+      # the relaxable direction: if OPEN 2.C later settles toward composition, this refusal is the
+      # single site that widens, and nothing that was accepted under it breaks.
+      byIdentity = prelude.groupBy (m: m.schema.aspect.id_hash) keyed;
+      dupIdentities = filter (h: length byIdentity.${h} > 1) (attrNames byIdentity);
+
       # Raw folds keyed by aspect id_hash (ref routing is by identity, never by display key).
-      raws = listToAttrs (
-        map (m: {
-          name = m.schema.aspect.id_hash;
-          value = {
-            member = m;
-            raw = foldMember {
-              inherit (m) schema layers;
-              strict = m.strict or true;
-              # Knot-tied: the resolver reaches back through `raws`, and nothing forces it until
-              # an entry's own value is forced — by which point `raws` is the value we came
-              # through. The fold's non-interference law is what keeps that from being a cycle.
-              resolverFor = resolveRefFrom m.schema.aspect;
-            };
+      # `head ms` keeps today's first-wins behaviour on every non-colliding batch byte-identical —
+      # the collapsed intermediate still forms on a colliding batch, but is unreachable because
+      # every accessor below routes through `gate`, which refuses first via `dupIdentities`.
+      raws = mapAttrs (
+        _h: ms:
+        let
+          m = head ms;
+        in
+        {
+          member = m;
+          raw = foldMember {
+            inherit (m) schema layers;
+            strict = m.strict or true;
+            # Knot-tied: the resolver reaches back through `raws`, and nothing forces it until
+            # an entry's own value is forced — by which point `raws` is the value we came
+            # through. The fold's non-interference law is what keeps that from being a cycle.
+            resolverFor = resolveRefFrom m.schema.aspect;
           };
-        }) keyed
-      );
+        }
+      ) byIdentity;
 
       # Rich resolver carrying the source (aspect, field) so E4/E5 name both endpoints (L10).
       resolveRefFrom =
@@ -313,12 +332,20 @@ in
       # is the read, not a second pass over them.
       resolvedProvOf = h: raws.${h}.raw.provenance;
 
-      # Definition-time gate at first force of the result: E7, then acyclicity (which also forces
-      # every contribution to WHNF via the graph scan), then the (still-lazy) resolved attrset.
+      # Definition-time gate at first force of the result: E7 (display key, then identity), then
+      # acyclicity (which also forces every contribution to WHNF via the graph scan), then the
+      # (still-lazy) resolved attrset. The identity arm is second so a batch violating both keeps
+      # today's message on the display axis unchanged.
       gate =
         x:
         if dupKeys != [ ] then
           throw "gen-settings: duplicate batch key (E7): '${head dupKeys}'"
+        else if dupIdentities != [ ] then
+          let
+            h = head dupIdentities;
+            culprits = map (m: "'${m._key}' (${renderAddress { aspect = m.schema.aspect; }})") byIdentity.${h};
+          in
+          throw "gen-settings: duplicate batch identity (E7): '${shortHash h}' shared by ${concatStringsSep " and " culprits}"
         else
           seq checkedGraph x;
     in
@@ -345,6 +372,12 @@ in
       # `.value` already gates on (:242/:323 above). Returning theGraph here let `.graph` deepSeq
       # clean on a batch whose `.value` throws E3 — two views of one result disagreeing about
       # validity (den-hoag-yk07).
-      graph = checkedGraph;
+      #
+      # `gate`, not `checkedGraph` bare: E7 (either arm) must refuse `.graph` too, or a consumer
+      # gating on `.graph` alone passes a batch `.value` rejects — den-hoag-yk07's exact class,
+      # surviving on the E7 axis until this line. `resolveAll` returns exactly `{ value;
+      # provenance; graph; }`, and EVERY one of the three routes through `gate` — a fourth
+      # accessor added later without it silently reopens this defect.
+      graph = gate checkedGraph;
     };
 }

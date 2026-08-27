@@ -1,6 +1,7 @@
 # T6 resolution-errors (L10, L11). Error addressing names both endpoints (no bare name without its
 # identity rendering); identity in ≡ identity out. Error codes E1 (schema shape), E2 (strict unknown
-# field), E4 (target not in batch), E5 (bad path), E6 (non-identity ref target), E7 (duplicate key).
+# field), E4 (target not in batch), E5 (bad path), E6 (non-identity ref target), E7 (duplicate batch
+# key OR duplicate batch identity — two arms, one law: the batch is injective).
 #
 # Pure Nix cannot capture a throw's *message*: builtins.tryEval yields only success:bool. So what a
 # cell in THIS file pins is that a refusal fires (success == false) at the specified force point, and
@@ -11,8 +12,10 @@
 # can hold a message, and it needs an output whose cells' `expr` may abort, so the E1/E4/E5/E6 byte
 # goldens live in `ci/tests-error.nix` on `flake.testsError`. `renderAddress`, which every addressed
 # message composes, is pinned arm by arm in `ci/tests/address-rendering.nix`; E3's rendered cycles are
-# pinned by the `renderCycles` goldens in `ci/tests/static-graph.nix` (T5). E2 and E7 have no byte
-# golden anywhere — their text is held by nothing but the code that writes it.
+# pinned by the `renderCycles` goldens in `ci/tests/static-graph.nix` (T5). E7's identity arm has a
+# byte golden too, `ci/tests-error.nix`'s `identity-collapse` suite (den-hoag-dz8j) — a boolean cell
+# cannot discriminate it from the pre-existing display-key arm. E2 and E7's display-key arm still
+# have no byte golden anywhere — their text is held by nothing but the code that writes it.
 {
   lib,
   genSettings,

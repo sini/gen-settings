@@ -97,6 +97,71 @@ let
 
   batchE5 = terminalPathBatch "nope";
 
+  # E7 (identity arm) — two members share ONE id_hash under DISTINCT display keys. `theme-alias`
+  # carries theme's id_hash under a different name, the same construction `ci/tests/static-graph.nix`'s
+  # `themeAlias` fixture uses to observe the identity/display split from the graph side.
+  themeAlias = fx.mkAspect "theme-alias" theme.id_hash;
+  dupIdentityBatch = [
+    (
+      member (mkSchema {
+        aspect = theme;
+        fields = {
+          font = {
+            default = "FIRST";
+          };
+        };
+      }) [ ]
+      // {
+        key = "theme";
+      }
+    )
+    (
+      member (mkSchema {
+        aspect = themeAlias;
+        fields = {
+          font = {
+            default = "SECOND";
+          };
+        };
+      }) [ ]
+      // {
+        key = "theme2";
+      }
+    )
+  ];
+
+  # LIVE CONTROL for the cell above: the SAME two display keys, but DISTINCT identities. Without
+  # it, the identity refusal is satisfied by a `resolveAll` that refuses every two-member batch —
+  # the cell's answer would be about the display keys colliding, not about identity.
+  distinctIdentitySameKeysBatch = [
+    (
+      member (mkSchema {
+        aspect = theme;
+        fields = {
+          font = {
+            default = "FIRST";
+          };
+        };
+      }) [ ]
+      // {
+        key = "theme";
+      }
+    )
+    (
+      member (mkSchema {
+        aspect = terminal;
+        fields = {
+          font = {
+            default = "SECOND";
+          };
+        };
+      }) [ ]
+      // {
+        key = "theme2";
+      }
+    )
+  ];
+
   # THE SUBSTITUTION'S DOMAIN. `resolveOne` applied ONCE per construction, so the two arms asserted
   # below are halves of one result rather than two similar calls — which is what lets them witness
   # a result disagreeing with itself rather than two exports disagreeing with each other.
@@ -294,6 +359,53 @@ in
       test-control-e5-construction-with-corrected-path-resolves = {
         expr = (resolveAll { batch = terminalPathBatch "g"; }).value.theme.f;
         expected = "G";
+      };
+    };
+
+    # E7's IDENTITY ARM — den-hoag-dz8j. `resolveAll` indexed the batch twice, under two
+    # different keys (display key for the output, `id_hash` for the fold), and assumed the two
+    # indexings were bijective without deriving or enforcing it. Two members sharing one
+    # `id_hash` under distinct display keys passed the display-key E7 check and collided in the
+    # identity-keyed fold: both display keys silently resolved to the FIRST member's value, the
+    # second member's declarations gone with no diagnostic. ADR-0016 leaves how two members at
+    # one identity should COMPOSE unsettled (premise-document OPEN 2.C); refusing by name decides
+    # nothing about that and is the arm it names as available, so this closes as a second E7 arm
+    # rather than a silent first-wins fold or an invented precedence rule.
+    #
+    # ★ A cell that only checks "it refuses" would pass a refusal firing for the wrong reason —
+    # `ci/tests/resolution-errors.nix`'s boolean `test-e7-duplicate-key` cannot discriminate this
+    # arm from the pre-existing display-key one. The byte goldens below are what can.
+    flake.testsError.identity-collapse = {
+      test-e7-duplicate-identity-message = {
+        expr = (resolveAll { batch = dupIdentityBatch; }).value;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: duplicate batch identity \\(E7\\): 'a1b2c3d4' shared by 'theme' \\(aspect\\(theme#a1b2c3d4\\)\\) and 'theme2' \\(aspect\\(theme-alias#a1b2c3d4\\)\\)$";
+        };
+      };
+
+      # LIVE CONTROL, same run: the identical two display keys, DISTINCT identities, resolve
+      # cleanly — the plumbing works, and the cell above's refusal is about identity, not keys.
+      test-control-distinct-identities-same-display-keys-resolve = {
+        expr = (resolveAll { batch = distinctIdentitySameKeysBatch; }).value;
+        expected = {
+          theme = {
+            font = "FIRST";
+          };
+          theme2 = {
+            font = "SECOND";
+          };
+        };
+      };
+
+      # BOTH gated accessors, not just the one the fixture above happens to read — same
+      # colliding construction, `.provenance` forced instead of `.value`.
+      test-e7-duplicate-identity-provenance-also-refuses = {
+        expr = (resolveAll { batch = dupIdentityBatch; }).provenance;
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings: duplicate batch identity \\(E7\\): 'a1b2c3d4' shared by 'theme' \\(aspect\\(theme#a1b2c3d4\\)\\) and 'theme2' \\(aspect\\(theme-alias#a1b2c3d4\\)\\)$";
+        };
       };
     };
 
