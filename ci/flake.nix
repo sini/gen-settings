@@ -63,7 +63,7 @@
       extraModules = [
         # `nix run ./ci#perf-bench` — the driver for ci/perf-bench.nix.
         ./perf-bench-app.nix
-        # `flake.testsError` + its `ci-error` hook.
+        # The `flake.testsError` cells; gen-harness wires the `ci-error` hook that reads them.
         ./tests-error.nix
       ];
       specialArgs = {

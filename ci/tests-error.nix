@@ -25,16 +25,16 @@
 # it: measured, an unanchored pattern that is a strict PREFIX of the thrown message passes, so
 # without `^` and `$` the cell pins a substring and a message with text appended still satisfies it.
 #
-# BOTH OUTPUTS NEED RUNNING, so both get a hook. The `ci` hook the shared flake module builds bakes
-# `./ci#tests` into its own text and cannot be pointed here; `ci-error` below is its counterpart,
-# under a distinct hook id so the two merge rather than collide.
+# BOTH OUTPUTS NEED RUNNING, so both get a hook, and gen-harness's `flakeModule.nix` wires both —
+# under distinct hook ids so the two merge rather than collide. The `ci` hook bakes `./ci#tests`
+# into its own text and cannot be pointed here; `ci-error` is its counterpart and this file supplies
+# only its cells.
 #
 #   nix-unit --flake ./ci#tests        # the suites
 #   nix-unit --flake ./ci#testsError   # these cells
 {
   lib,
   genSettings,
-  genInputs,
   ...
 }:
 let
@@ -190,14 +190,6 @@ let
   refuses = e: !(builtins.tryEval (builtins.deepSeq e e)).success;
 in
 {
-  # Same type as `flake.tests`: the same kind of thing, read by the same runner — only the
-  # assertion the cells carry differs.
-  options.flake.testsError = lib.mkOption {
-    type = lib.types.lazyAttrsOf (lib.types.lazyAttrsOf lib.types.raw);
-    default = { };
-    description = "Test suites whose cells' `expr` CAN ABORT: { suite.test = { expr; expected | expectedError; }; }. Read by `nix-unit --flake ./ci#testsError`; deliberately outside `flake.tests`, which the batch asserter forces every `expr` of and would crash on rather than fail.";
-  };
-
   config = {
     flake.testsError.ref-refusal = {
       # E6 fires at application time, before `genSchema.fieldRef` is reached, so the call itself is
@@ -509,29 +501,5 @@ in
         expected = "RESOLVED";
       };
     };
-
-    # THE SECOND HOOK. A second output that nothing runs is a second output that rots, and the
-    # wrapper the shared flake module builds bakes `./ci#tests` into its own text, so it cannot be
-    # pointed at this one.
-    perSystem =
-      { pkgs, system, ... }:
-      {
-        pre-commit.settings.hooks.ci-error = {
-          enable = true;
-          name = "ci-error";
-          description = "Run nix-unit error-assertion tests";
-          entry = "${
-            pkgs.writeShellApplication {
-              name = "gen-settings-ci-nix-unit-error";
-              runtimeInputs = [ genInputs.nix-unit.packages.${system}.default ];
-              text = ''
-                exec nix-unit --flake ./ci#testsError "$@"
-              '';
-            }
-          }/bin/gen-settings-ci-nix-unit-error";
-          files = "\\.nix$";
-          pass_filenames = false;
-        };
-      };
   };
 }
