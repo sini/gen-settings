@@ -74,6 +74,9 @@ let
 
   forbidden = [
     "nixpkgs"
+    # The BOUNDARY: any nixpkgs lib call at all. The named `lib.X` entries below are kept for
+    # the sharper message they give on a red, not because they bound the invariant.
+    "lib."
     "lib.types"
     "lib.mkOption"
     "lib.mkMerge"
@@ -114,6 +117,9 @@ in
   # trailing comment still went.
   flake.tests.purity.test-control-strip-cuts-at-comments-not-inside-strings = {
     expr = scan [ probe ];
-    expected = [ "<in-string-hash>: 'lib.types'" ];
+    expected = [
+      "<in-string-hash>: 'lib.'"
+      "<in-string-hash>: 'lib.types'"
+    ];
   };
 }
