@@ -77,15 +77,25 @@ let
       )
     ) srcs;
 
+  # walk : string -> path -> [ { name; path; } ], `name` being `prefix` extended by the entry's
+  # position in the tree. The label a red CI prints is the whole product of a failing cell, and a
+  # `toString` of the path value renders the store copy the flake is evaluated from
+  # (`/nix/store/<hash>-source/lib/default.nix`) — a file no reader can open in their own checkout,
+  # whose hash moves on any unrelated edit. Same shape as gen-link's and gen-graph's, deliberately.
   walk =
-    dir:
+    prefix: dir:
     lib.concatLists (
       lib.mapAttrsToList (
-        name: type:
+        entry: type:
         if type == "directory" then
-          walk (dir + "/${name}")
-        else if lib.hasSuffix ".nix" name then
-          [ (dir + "/${name}") ]
+          walk "${prefix}${entry}/" (dir + "/${entry}")
+        else if lib.hasSuffix ".nix" entry then
+          [
+            {
+              name = "${prefix}${entry}";
+              path = dir + "/${entry}";
+            }
+          ]
         else
           [ ]
       ) (builtins.readDir dir)
@@ -96,26 +106,32 @@ let
   # the read; and `sources` is then a total per-element function of `rawSources` — the name passes
   # through, the code is the strip of the text — so pinning either one pins the other, and the cells
   # over each COMPOSE instead of hoping two independent reads of the same tree agree.
-  rawSources =
-    map (p: {
-      name = toString p;
-      text = builtins.readFile p;
-    }) (walk libDir)
-    ++
-      map
-        (rel: {
-          name = rel;
-          text = builtins.readFile (../.. + "/${rel}");
-        })
-        [
-          "flake.nix"
-          "default.nix"
-        ];
+  raw =
+    entries:
+    map (e: {
+      inherit (e) name;
+      text = builtins.readFile e.path;
+    }) entries;
 
-  sources = map (s: {
-    inherit (s) name;
-    code = stripComments s.text;
-  }) rawSources;
+  strip =
+    entries:
+    map (e: {
+      inherit (e) name;
+      code = stripComments e.text;
+    }) entries;
+
+  rawSources = raw (walk "lib/" libDir) ++ [
+    {
+      name = "flake.nix";
+      text = builtins.readFile ../../flake.nix;
+    }
+    {
+      name = "default.nix";
+      text = builtins.readFile ../../default.nix;
+    }
+  ];
+
+  sources = strip rawSources;
 
   forbidden = [
     "nixpkgs"
