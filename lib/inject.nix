@@ -29,6 +29,27 @@ let
     head
     ;
 
+  # ★★★ ADR-0023 (b) SITE 1, THE LIVE CONSUMER — the `contracts ? { }` channel
+  # below is the one path in the ecosystem that reaches gen-bind SITE 1
+  # (`applyContracts`, gen-bind `lib/wrap.nix`) LIVE: it calls `bind.wrap`
+  # directly, the retired call-level surface gen-bind's Adapters do not offer a
+  # position for, and any caller of `injectAspectSettings` that supplies
+  # `contracts` puts a substrate closure into whatever evaluation eventually
+  # consumes `classContent` (ADR-0014: the boundary is the eval, not the repo).
+  #
+  # (i) THIS CHANNEL DOES NOT MEET ADR-0023 (c). `contracts` is forwarded
+  # unconditionally to `bind.wrap`; a caller that supplies one crosses site 1.
+  # (ii) THE PRICE, IN THE SITE'S OWN TERMS: a substrate closure — a contract's
+  # check/transform pair, applied by gen-bind's `applyContracts` — executes
+  # inside the target's evaluation, reading the bound value and its provenance
+  # and throwing whatever the contract's own predicate throws.
+  # (iii) THE ARGUED IMPOSSIBILITY is gen-bind's, at `wrap.nix`'s `applyContracts`
+  # declaration (write-list entry 5): there is no Adapter route to close, so a
+  # by-construction repair is not available to this unit; this note only records
+  # that the retired direct-call surface — and this channel specifically — is the
+  # live path into it. This is a declaration comment, not a new consumer of
+  # gen-settings' EXPERIMENTAL surface (ADR-0017).
+  #
   # injectAspectSettings { aspect; classContent; settings; settingsKey ?; bindings ?; contracts ?;
   #   provenance ? } -> { module; wrapped; signature; }
   # The injected settings binding is namespaced: settings = { ${settingsKey} = <resolved>; }, so
