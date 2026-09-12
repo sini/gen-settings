@@ -1,5 +1,7 @@
 # gen-settings — agent capability sheet
 
+> **Library class: provisional.** Deletion requires only the named successor plan to fire, not a fresh domain argument; a usage count remains inadmissible, though unneeded once the plan lands.
+
 > **Status (owner ruling, 2026-08-05): EXPERIMENTAL, subject to replacement.** Built by the original
 > den-hoag agent; likely to go through redesign. Do not build new long-lived dependencies on this
 > surface without checking the den-hoag tracker first.
