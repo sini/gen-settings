@@ -15,9 +15,9 @@
 # ★ IT CATCHES BOTH DIRECTIONS OF THE DRIFT, which is why it is an argument-passing cell rather than
 # an `attrNames` comparison alone:
 #   · a shim naming FEWER formals than `lib` refuses this application by name
-#     (`called with unexpected argument 'genIdentity'`);
+#     (`called with unexpected argument 'identity'`);
 #   · a shim that forwards fewer than `lib` requires refuses inside it
-#     (`called without required argument 'genIdentity'`).
+#     (`called without required argument 'identity'`).
 # Both are uncatchable evaluator refusals, so either turns this cell ☢️ rather than ❌ — a crash is
 # the loudest reading available and is the right one for an entry point that does not exist.
 {
@@ -25,10 +25,10 @@
   prelude,
   genAlgebra,
   genBind,
-  genGraph,
-  genSchema,
-  genTypes,
-  genIdentity,
+  graph,
+  schema,
+  types,
+  identity,
   lib,
   ...
 }:
@@ -51,10 +51,10 @@ let
   entryArgs = {
     inherit
       prelude
-      genGraph
-      genSchema
-      genTypes
-      genIdentity
+      graph
+      schema
+      types
+      identity
       ;
     algebra = genAlgebra;
     bind = genBind;

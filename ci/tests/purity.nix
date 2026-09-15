@@ -156,7 +156,7 @@ let
 
   # The live counterpart to `forbidden`: the name this library reaches for where a tether would reach
   # for nixpkgs. Every gen-settings source but ONE carries it, and that exclusion is `lib/ref.nix`,
-  # whose formal is `{ genSchema }` alone — it takes no prelude and so cannot name one. The exclusion
+  # whose formal is `{ schema }` alone — it takes no prelude and so cannot name one. The exclusion
   # is what gives the assertion its teeth: the expected list is a PROPER SUBSET of the manifest, so a
   # read returning one fixed text for every file lands outside it either way — without the token the
   # list collapses toward empty, with it the list swells to every source.

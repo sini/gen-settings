@@ -50,7 +50,7 @@ let
     prelude = gen-prelude.lib;
     algebra = gen-algebra.lib;
     bind = gen-bind.lib;
-    genGraph = gen-graph.lib;
+    graph = gen-graph.lib;
   };
   inherit (genSettings) mkSchema resolveOne;
 

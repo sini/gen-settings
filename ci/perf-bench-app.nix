@@ -22,6 +22,7 @@
           "gen-graph" = ${inputs.gen-graph}/lib;
           "gen-types" = ${inputs.gen-types}/lib;
           "gen-schema" = ${inputs.gen-schema};
+          "gen-identity" = ${inputs.gen-identity}/lib;
         }
       '';
       perfBench = pkgs.writeShellApplication {

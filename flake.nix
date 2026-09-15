@@ -54,10 +54,10 @@
             prelude = gen-prelude.lib;
             algebra = gen-algebra.lib;
             bind = gen-bind.lib;
-            genGraph = gen-graph.lib;
-            genSchema = gen-schema.lib;
-            genTypes = gen-types.lib;
-            genIdentity = gen-identity.lib;
+            graph = gen-graph.lib;
+            schema = gen-schema.lib;
+            types = gen-types.lib;
+            identity = gen-identity.lib;
           };
         in
         builtins.deepSeq (builtins.mapAttrs (_: builtins.typeOf) surface) surface;

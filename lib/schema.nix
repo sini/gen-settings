@@ -11,7 +11,7 @@
 # co-located with it (Rondon, Kawaguchi & Jhala, *Liquid Types*, PLDI 2008). What gen-settings
 # says when a field is ill-formed is E1 — the checkers supply the predicate, this library keeps
 # the diagnostic, and each checker states exactly one obligation so each maps to exactly one E1.
-{ prelude, genTypes }:
+{ prelude, types }:
 let
   inherit (builtins)
     attrNames
@@ -24,7 +24,7 @@ let
   # the aspect produces cascade keys that never match. `hasInfix` is prelude's containment test —
   # one `split` on the escaped literal, carrying no `.*` anchor to make the engine recurse on the
   # subject's length; it is the vendored drop-in for nixpkgs' `lib.hasInfix`.
-  bareKey = genTypes.refined genTypes.string [
+  bareKey = types.refined types.string [
     {
       check = name: !(prelude.hasInfix "." name);
       message = "must be a bare key (no dots)";
@@ -36,12 +36,12 @@ let
   # field stays unforced for the fold. Typing it as anything else would force it.
   # `merge` is deliberately NOT a member here: it is checked after defaulting, below, so that
   # this checker's failure means "no default" and nothing else.
-  fieldRecord = genTypes.struct "field" {
-    default = genTypes.any;
+  fieldRecord = types.struct "field" {
+    default = types.any;
   };
 
   # The EFFECTIVE merge strategy, i.e. the one checked after `merge or "replace"` defaulting.
-  mergeStrategy = genTypes.enum "merge" [
+  mergeStrategy = types.enum "merge" [
     "replace"
     "append"
     "recursive"

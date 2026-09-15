@@ -12,9 +12,12 @@
 # "is any node self-reachable" does not.
 #
 # THE TWO ARMS are two REVISIONS of this library, selected by `srcs.gen-settings`. `lib/default.nix`
-# gained a `genGraph` formal in the migrated revision, so the argument set is intersected with the
-# imported function's own formals — that is what lets one workload file drive both revisions
-# unmodified, and it is load-bearing, not a convenience.
+# gained a `genGraph` formal in the migrated revision, and that formal was later renamed `graph`
+# (the L2 roster rename — `genGraph`/`genSchema`/`genTypes`/`genIdentity` became `graph`/`schema`/
+# `types`/`identity`), so the argument set is intersected with the imported function's own formals
+# and offered under BOTH spellings — that is what lets one workload file drive every revision this
+# bench is pointed at, pre- and post-rename alike, unmodified, and it is load-bearing, not a
+# convenience.
 #
 # This file only DEFINES the workload. Counters come from NIX_SHOW_STATS; see the re-run recipe
 # below. `nrFunctionCalls` is the reported figure because it is deterministic across runs;
@@ -35,17 +38,20 @@
 #   `nix eval --impure --expr '<gen-prelude>'` fails with "not found in the Nix search path").
 #   `gen-schema` is the one exception and points at the REPOSITORY ROOT: its library also needs
 #   gen-merge, so it goes through gen-schema's own standalone entry, as `default.nix` does.
+#   `gen-identity`'s `lib` is a bare value (a dependency-free leaf), so it is imported unapplied,
+#   exactly as `default.nix`'s `identity` default does.
 #
 #     GP=/path/to/gen-prelude/lib; GA=/path/to/gen-algebra/lib
 #     GB=/path/to/gen-bind/lib;    GG=/path/to/gen-graph/lib
 #     GT=/path/to/gen-types/lib;   GS=/path/to/gen-schema
+#     GI=/path/to/gen-identity/lib
 #     for arm in /tmp/gs-base/lib ./lib; do
 #       for n in 8 10 12 14 16; do
 #         NIX_SHOW_STATS=1 NIX_SHOW_STATS_PATH=/tmp/stats.json \
 #           nix eval --impure --json --expr "import ./ci/perf-bench.nix {
 #             srcs = { gen-settings = $arm; gen-prelude = $GP;
 #                      gen-algebra = $GA; gen-bind = $GB; gen-graph = $GG;
-#                      gen-types = $GT; gen-schema = $GS; };
+#                      gen-types = $GT; gen-schema = $GS; gen-identity = $GI; };
 #             stack = \"acyclic\"; n = $n; }"
 #         jq .nrFunctionCalls /tmp/stats.json
 #       done
@@ -59,8 +65,8 @@
 #   multiplies by ~4 for each +2 in `n`. Stating the refutation condition is what makes this a
 #   measurement rather than a boast.
 {
-  srcs, # { gen-settings, gen-prelude, gen-algebra, gen-bind, gen-graph, gen-types } — lib/ paths;
-  # plus gen-schema, which is a REPOSITORY ROOT (see the note above)
+  srcs, # { gen-settings, gen-prelude, gen-algebra, gen-bind, gen-graph, gen-types, gen-identity }
+  # — lib/ paths; plus gen-schema, which is a REPOSITORY ROOT (see the note above)
   stack, # "acyclic" (the always-taken path) | "backedge" (the positive control)
   n,
 }:
@@ -68,21 +74,28 @@ let
   prelude = import srcs.gen-prelude;
   algebra = import srcs.gen-algebra { inherit prelude; };
   bind = import srcs.gen-bind { inherit prelude; };
-  genGraph = import srcs.gen-graph { inherit prelude; };
-  genTypes = import srcs.gen-types { inherit prelude; };
-  genSchema = import srcs.gen-schema { inherit prelude algebra; };
+  graphLib = import srcs.gen-graph { inherit prelude; };
+  typesLib = import srcs.gen-types { inherit prelude; };
+  schemaLib = import srcs.gen-schema { inherit prelude algebra; };
+  identityLib = import srcs.gen-identity;
 
   libFn = import srcs.gen-settings;
+  # ★ OFFERED UNDER BOTH SPELLINGS, load-bearing per the file header: the revision `srcs.gen-settings`
+  # points at may declare `genGraph`/`genSchema`/`genTypes`/`genIdentity` (pre-L2-rename) or
+  # `graph`/`schema`/`types`/`identity` (post-rename) — `intersectAttrs` against that revision's own
+  # `functionArgs` selects whichever spelling it actually declares, so one candidate dict drives
+  # every revision without per-revision modification.
   gs = libFn (
     builtins.intersectAttrs (builtins.functionArgs libFn) {
-      inherit
-        prelude
-        algebra
-        bind
-        genGraph
-        genSchema
-        genTypes
-        ;
+      inherit prelude algebra bind;
+      genGraph = graphLib;
+      graph = graphLib;
+      genSchema = schemaLib;
+      schema = schemaLib;
+      genTypes = typesLib;
+      types = typesLib;
+      genIdentity = identityLib;
+      identity = identityLib;
     }
   );
   inherit (gs) mkSchema refGraph ref;

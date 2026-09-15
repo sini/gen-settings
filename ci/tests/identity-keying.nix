@@ -10,8 +10,8 @@
 {
   lib,
   genSettings,
-  genSchema,
-  genIdentity,
+  schema,
+  identity,
   ...
 }:
 let
@@ -75,7 +75,7 @@ let
 
   # The minting authority itself, called live from the same fixtures the library sees, so an
   # expectation cannot drift from the primitive it is about.
-  mintStamp = labels: relata: genIdentity.hashIdentity "attaches" labels (k: relata.${k});
+  mintStamp = labels: relata: identity.hashIdentity "attaches" labels (k: relata.${k});
 
   axonFirewall = {
     aspect = fx.aspects.firewall.id_hash;

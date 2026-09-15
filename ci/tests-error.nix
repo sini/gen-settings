@@ -192,7 +192,7 @@ in
 {
   config = {
     flake.testsError.ref-refusal = {
-      # E6 fires at application time, before `genSchema.fieldRef` is reached, so the call itself is
+      # E6 fires at application time, before `schema.fieldRef` is reached, so the call itself is
       # the force point and no accessor is needed to reach the throw.
       test-e6-name-string-target-refuses-by-name = {
         expr = ref "theme" [ "x" ];

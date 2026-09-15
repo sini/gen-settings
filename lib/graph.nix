@@ -57,7 +57,7 @@
   prelude,
   ref,
   display,
-  genGraph,
+  graph,
 }:
 let
   inherit (builtins)
@@ -160,7 +160,7 @@ in
       # The derivation, handed to its owner: contributions in, hops out, adjacency and node set
       # built there. What crosses is a scan and a projection — gen-graph never learns what a ref
       # is, and the field address travels as an opaque key.
-      scanned = genGraph.fromScan {
+      scanned = graph.fromScan {
         items = map (c: c // { id = nodeKey c; }) allContribs;
         scan = refsIn;
         project = r: nodeKey (targetOf r);
@@ -184,9 +184,7 @@ in
 
       # Each reported cycle is an ORDERED walk over node keys — every consecutive pair is an
       # edge — which is what licenses assertAcyclic's " -> " join below.
-      cycles = map (cyc: map (k: nodeMap.${k}) cyc) (
-        genGraph.cyclePaths { inherit (scanned) nodes edges; }
-      );
+      cycles = map (cyc: map (k: nodeMap.${k}) cyc) (graph.cyclePaths { inherit (scanned) nodes edges; });
     in
     {
       nodes = map (k: nodeMap.${k}) scanned.nodes;

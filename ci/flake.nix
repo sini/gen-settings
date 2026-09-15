@@ -37,10 +37,10 @@
         prelude = gen-prelude.lib;
         algebra = gen-algebra.lib;
         bind = gen-bind.lib;
-        genGraph = gen-graph.lib;
-        genSchema = gen-schema.lib;
-        genTypes = gen-types.lib;
-        genIdentity = gen-identity.lib;
+        graph = gen-graph.lib;
+        schema = gen-schema.lib;
+        types = gen-types.lib;
+        identity = gen-identity.lib;
       };
       # gen-algebra's fold, exposed directly to the value-parity + label-opacity suites (the real
       # fold, byte-identity is the Spike 5 acceptance gate).
@@ -48,8 +48,8 @@
       genBind = gen-bind.lib;
       # The minting authority, exposed directly to the identity-keying suite so its expectation is
       # computed by calling the primitive rather than transcribed from it.
-      genSchema = gen-schema.lib;
-      genIdentity = gen-identity.lib;
+      schema = gen-schema.lib;
+      identity = gen-identity.lib;
     in
     gen-harness.lib.mkCi {
       inherit inputs;
@@ -71,17 +71,17 @@
           genSettings
           genAlgebra
           genBind
-          genSchema
-          genIdentity
+          schema
+          identity
           ;
-        # `prelude`, `genGraph` and `genTypes` reach the suite because `tests/entry.nix` applies the
+        # `prelude`, `graph` and `types` reach the suite because `tests/entry.nix` applies the
         # STANDALONE root entry with explicit arguments — which is what keeps that cell pure, since
         # supplying every dependency formal means the shim's fetching defaults are never forced.
         # They are the SAME instances `genSettings` above is built from, so the two sides of that
         # comparison differ in entry point and in nothing else.
         prelude = gen-prelude.lib;
-        genGraph = gen-graph.lib;
-        genTypes = gen-types.lib;
+        graph = gen-graph.lib;
+        types = gen-types.lib;
       };
     };
 }

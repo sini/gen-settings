@@ -11,29 +11,29 @@
 # pin — `inject.nix` calls `hashIdentity` for the `attaches` binding stamp). CI purity invariant
 # enforces the boundary.
 #
-# `genGraph` is the gen-graph library; the local `graph` below is this library's own ref-graph
-# module. The two names are kept distinct because both are in scope here and `resolve.nix` binds
-# the local one. `genTypes` carries the prefix for a second reason: bare `types` would read as
-# nixpkgs `lib.types`, the very tether Class B forbids.
+# `graph` (the formal) is the gen-graph library; the local `refGraphModule` below is this
+# library's own ref-graph module. The two are kept distinct because both are in scope here and
+# `resolve.nix` binds the local one under its own formal name `graph`. `schema` (the formal, the
+# schema.nix module) and `schemaModule` are kept distinct for the same reason.
 {
   prelude,
   algebra,
   bind,
-  genGraph,
-  genSchema,
-  genTypes,
-  genIdentity,
+  graph,
+  schema,
+  types,
+  identity,
 }:
 let
   display = import ./display.nix { inherit prelude; };
-  schema = import ./schema.nix { inherit prelude genTypes; };
-  ref = import ./ref.nix { inherit genSchema; };
-  graph = import ./graph.nix {
+  schemaModule = import ./schema.nix { inherit prelude types; };
+  ref = import ./ref.nix { inherit schema; };
+  refGraphModule = import ./graph.nix {
     inherit
       prelude
       ref
       display
-      genGraph
+      graph
       ;
   };
   resolve = import ./resolve.nix {
@@ -41,23 +41,23 @@ let
       prelude
       algebra
       ref
-      graph
       display
       ;
+    graph = refGraphModule;
   };
   inject = import ./inject.nix {
     inherit
       prelude
       bind
-      genSchema
-      genIdentity
+      schema
+      identity
       ;
   };
 in
 {
-  inherit (schema) mkSchema;
+  inherit (schemaModule) mkSchema;
   inherit (ref) ref isRef refsIn;
-  inherit (graph) refGraph assertAcyclic renderCycles;
+  inherit (refGraphModule) refGraph assertAcyclic renderCycles;
   inherit (resolve) resolveOne resolveAll;
   inherit (inject) injectAspectSettings assembleHost;
   inherit (display) renderAddress;

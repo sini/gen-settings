@@ -19,7 +19,7 @@
 #   input the refusal fires never; where it would fire, the alternative was worse than a missed
 #   diagnostic — the edge could not be derived, the cycle it would have closed went undetected, and
 #   the unresolved ref record leaked into output as data.
-{ genSchema }:
+{ schema }:
 let
   inherit (builtins)
     isAttrs
@@ -31,8 +31,8 @@ in
 {
   # The datum's predicate and scan, unchanged: gen-settings adds nothing to them, and wrapping
   # them would put a second implementation of a graph-bearing shape in the consumer.
-  isRef = genSchema.isFieldRef;
-  refsIn = genSchema.fieldRefsIn;
+  isRef = schema.isFieldRef;
+  refsIn = schema.fieldRefsIn;
 
   # ref aspectEntry path -> ref record
   #   aspectEntry MUST carry id_hash (identity law) — a string or any value without id_hash
@@ -44,5 +44,5 @@ in
     else if !(isList path && path != [ ] && all isString path) then
       throw "gen-settings: ref (E6): path must be a non-empty list of field-name strings"
     else
-      genSchema.fieldRef aspectEntry path;
+      schema.fieldRef aspectEntry path;
 }
