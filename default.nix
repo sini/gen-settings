@@ -2,8 +2,9 @@
 #
 # gen-settings is a function of `prelude` (gen-prelude), `algebra` (gen-algebra — the fold),
 # `bind` (gen-bind — injection), `genGraph` (gen-graph — cycle detection), `genSchema`
-# (gen-schema — the ref datum and its scan) and `genTypes` (gen-types — the structural checkers
-# stating what a well-formed schema field is). The defaults fetch
+# (gen-schema — the ref datum and its scan), `genTypes` (gen-types — the structural checkers
+# stating what a well-formed schema field is) and `genIdentity` (gen-identity — the one minting
+# authority, a dependency-free leaf taken directly rather than through gen-schema). The defaults fetch
 # the flake-locked revs (content-addressed via narHash, so the plain-import path stays pure and in
 # lockstep with the flake output). Pass any explicitly to override (e.g. a local checkout).
 {

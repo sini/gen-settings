@@ -5,8 +5,11 @@
 # gen-bind (injection), gen-graph (cycle detection lives there), gen-schema (the ref DATUM
 # lives there, beside the reference type whose inhabitants refs are — so gen-schema is now an
 # IMPORTED input, not the interface-only dependency it once was; the id_hash law it defines is the
-# same law either way), and gen-types (structural checking — what a well-formed schema field IS is
-# stated there, while the E1 diagnostic stays here). CI purity invariant enforces the boundary.
+# same law either way), gen-types (structural checking — what a well-formed schema field IS is
+# stated there, while the E1 diagnostic stays here), and gen-identity (the one minting authority,
+# taken directly rather than through gen-schema so identity never depends on a second library's
+# pin — `inject.nix` calls `hashIdentity` for the `attaches` binding stamp). CI purity invariant
+# enforces the boundary.
 #
 # `genGraph` is the gen-graph library; the local `graph` below is this library's own ref-graph
 # module. The two names are kept distinct because both are in scope here and `resolve.nix` binds
