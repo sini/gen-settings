@@ -3,12 +3,14 @@
 
   # Class B (roadmap §5): builtins + gen-prelude, plus gen-algebra (the fold — foldLayersTraced —
   # lives there per Spike 5, never reimplemented here), gen-bind (injection), gen-graph (cycle
-  # detection over the ref graph — the algorithm lives there, never reimplemented here) and
-  # gen-schema (the ref DATUM and its scan live there, beside the reference TYPE whose inhabitants
-  # refs are). gen-schema was once consumed interface-only — values must carry id_hash — and is now
-  # an input. gen-types states what a well-formed schema field IS (the structural checkers behind
-  # E1, never reimplemented here); the E1 diagnostic itself stays. The library (./lib) is
-  # nixpkgs-lib-free (ci/tests/purity.nix); nixpkgs enters only in ci/ (the harness).
+  # detection over the ref graph — the algorithm lives there, never reimplemented here), gen-schema
+  # (the ref DATUM and its scan live there, beside the reference TYPE whose inhabitants refs are)
+  # and gen-identity (the minting authority; rationale on its own `inputs` line below). gen-schema
+  # was once consumed interface-only — values must carry id_hash — and is now an input. The
+  # `inputs` block below is this library's input list in full — this comment gives the WHY for
+  # each, not the count. gen-types states what a well-formed schema field IS (the structural
+  # checkers behind E1, never reimplemented here); the E1 diagnostic itself stays. The library
+  # (./lib) is nixpkgs-lib-free (ci/tests/purity.nix); nixpkgs enters only in ci/ (the harness).
   inputs = {
     gen-prelude.url = "github:sini/gen-prelude";
     gen-algebra.url = "github:sini/gen-algebra";
