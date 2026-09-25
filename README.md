@@ -139,8 +139,13 @@ signature-level reference — reference specs live there, not in the library rep
 Law-based suites, one named group per spec law (`ci/tests/`), run with [nix-unit](https://github.com/nix-community/nix-unit):
 
 ```bash
-cd ci && nix-unit --flake .#tests
+nix develop ./ci --command ci
 ```
+
+`ci` refuses when anything under a declared read root is unknown to git — any extension or name,
+`_`-prefixed included — and the remedy is `git add` or a move. The bare `nix-unit --flake ./ci#tests`
+and `nix flake check ./ci` are unguarded: they read a git-filtered copy of the tree, so an untracked
+cell is silently absent and the run stays green.
 
 Highlights: T1 computes value byte-identity against the **real** `foldLayers` (the Spike 5 gate); T5 pins static-graph strictness, conservativeness, and cycle detection (2-cycle, self-loop, 3-cycle, permissive field-granular non-cycle); T3 pins per-entry provenance laziness for shadowed refs; T7 runs the firewall full loop through `evalModules`; T8 pins id_hash-pair identity keying.
 
