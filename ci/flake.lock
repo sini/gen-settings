@@ -549,6 +549,32 @@
         "type": "github"
       }
     },
+    "gen-scope_2": {
+      "inputs": {
+        "gen-graph": [
+          "gen-graph"
+        ],
+        "gen-identity": [
+          "gen-identity"
+        ],
+        "gen-prelude": [
+          "gen-prelude"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790444290,
+        "narHash": "sha256-One8sm8ggpdYFclA9Izzp8NnylUp3WQ13iATB3SCOaA=",
+        "owner": "sini",
+        "repo": "gen-scope",
+        "rev": "01606b8eec09a4695ad1c4b8e80086e8945f6b94",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sini",
+        "repo": "gen-scope",
+        "type": "github"
+      }
+    },
     "gen-types": {
       "inputs": {
         "gen-identity": "gen-identity_3",
@@ -720,6 +746,7 @@
         "gen-identity": "gen-identity",
         "gen-prelude": "gen-prelude_3",
         "gen-schema": "gen-schema",
+        "gen-scope": "gen-scope_2",
         "gen-types": "gen-types_2",
         "nixpkgs": "nixpkgs_2"
       }

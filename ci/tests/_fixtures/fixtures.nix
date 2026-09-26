@@ -18,7 +18,8 @@ rec {
     absent = mkAspect "absent" "9999888877776666";
   };
 
-  # Entities (hosts/users) and a cell — anything carrying id_hash.
+  # Entities — anything carrying id_hash. A minted binding node fills the same slot; the
+  # identity-keying suite mints one through gen-scope rather than transcribing a token here.
   entities = {
     axon = {
       name = "axon-01";
@@ -31,11 +32,6 @@ rec {
     sini = {
       name = "sini";
       id_hash = "user0sini00000003";
-    };
-    # A cell (user@host) carrying a CANONICAL cell identity, not a plain-entity hash.
-    siniAtAxon = {
-      name = "sini@axon-01";
-      id_hash = "cell0siniaxon0004";
     };
   };
 

@@ -1,5 +1,5 @@
 # T8 identity-keying (L14, L18). assembleHost keys every injected module by id_hash pairs (never
-# names) on the entity/aspect axes: distinct entities (or cells) with the same aspect yield distinct
+# names) on the entity/aspect axes: distinct entities (or binding nodes) with the same aspect yield distinct
 # evalModules keys (no dedup collapse); identical (class, entity, aspect) yields an equal key
 # (evalModules merges once). Class-name-string / missing-id_hash inputs are definition-time errors.
 # E8: duplicate settingsKey within one call is a definition-time error.
@@ -7,11 +7,16 @@
 # The stamp itself is the minted `attaches` binding identity — the labelled tuple of the two relata
 # under gen-schema's single minting authority — so the key's identity region is a digest over
 # structure, not a join of the two hashes.
+#
+# The binding cells hand the slot a node minted by gen-scope's `mintStrata` (ADR-0016 rulings 3–4):
+# the filler is a function of its labelled relata, so the key moves when a relatum or a label moves
+# and holds when the emitters are presented in another order.
 {
   lib,
   genSettings,
   schema,
   identity,
+  scope,
   ...
 }:
 let
@@ -67,7 +72,6 @@ let
 
   modAxon = assembleFor fx.entities.axon;
   modBlade = assembleFor fx.entities.blade;
-  modCell = assembleFor fx.entities.siniAtAxon;
 
   markersOf =
     modules:
@@ -116,6 +120,52 @@ let
       ];
     }).collide.key;
 
+  # A binding node minted through the one authority: two relatum-free nodes at pass 0, the binding
+  # relating them at pass 1. Kind and labels are invented test data (ADR-0035). The identifier is
+  # held fixed, so the controls below move a relatum or a label and nothing else.
+  nodeAt0 = identifier: kind: {
+    pass = 0;
+    inherit identifier kind;
+    relata = { };
+    content = { };
+    site = "t:${identifier}";
+  };
+  bindingId = "inscribes";
+  inscribes = relata: {
+    pass = 1;
+    identifier = bindingId;
+    kind = "inscribes";
+    inherit relata;
+    content = { };
+    site = "t:${bindingId}";
+  };
+  withRelata =
+    relata:
+    [
+      (nodeAt0 "ferrule" "quill")
+      (nodeAt0 "sable" "quill")
+      (nodeAt0 "vellum" "sheet")
+    ]
+    ++ [ (inscribes relata) ];
+  emitters = withRelata {
+    stylus = "ferrule";
+    leaf = "vellum";
+  };
+  mintAll =
+    es:
+    scope.mintStrata {
+      kinds = { };
+      emitters = es;
+    };
+  minted = mintAll emitters;
+  # The caller adapts the node record to the slot; assembleHost reads `id_hash` and nothing else.
+  bindingFill = es: {
+    name = bindingId;
+    id_hash = (mintAll es).nodes.${bindingId}.identity;
+  };
+  fill = bindingFill;
+  bindingKey = es: (assembleFor (fill es)).key;
+
   # E8 — two aspects colliding on one settingsKey.
   e8Call = assembleHost {
     entity = fx.entities.axon;
@@ -155,14 +205,57 @@ in
       expr = modAxon.key != modBlade.key;
       expected = true;
     };
-    # L14 — a cell keys distinctly from its host entity (canonical cell identity).
-    test-cell-distinct-key = {
-      expr = modCell.key != modAxon.key;
+    # L14 — a minted binding node keys distinctly from a plain entity.
+    test-binding-distinct-key = {
+      expr = bindingKey emitters != modAxon.key;
       expected = true;
     };
-    test-cell-key-format = {
-      expr = modCell.key;
-      expected = "nixos@attaches:108bfcab8524fec18b4df1829c8442e9b43dadcdeecc2141c6e99b236409d89d";
+    # The slot takes the minted node: the key is the `attaches` stamp over the node's identity,
+    # computed by calling both authorities rather than transcribed.
+    test-binding-fills-slot = {
+      expr =
+        bindingKey emitters == "${fx.classes.nixos.name}@${
+          mintStamp [ "aspect" "entity" ] {
+            aspect = fx.aspects.firewall.id_hash;
+            entity = minted.nodes.${bindingId}.identity;
+          }
+        }";
+      expected = true;
+    };
+    # The filler is a minted node: mint-shaped, with out-edges under exactly its two labels.
+    test-binding-is-minted-node = {
+      expr =
+        builtins.match "[a-z][a-z0-9-]*:[0-9a-f]{64}" (fill emitters).id_hash != null
+        &&
+          lib.sort lib.lessThan (map (e: e.label) (builtins.filter (e: e.from == bindingId) minted.edges))
+          == [
+            "leaf"
+            "stylus"
+          ];
+      expected = true;
+    };
+    # One relation, one key, whatever order its emitters arrive in. The discrimination lives in
+    # gen-scope's mint (the labelled relata render as an attrset); the two controls below show the
+    # same key predicate reading false when a relatum or a label moves.
+    test-binding-key-permutation-invariant = {
+      expr = bindingKey emitters == bindingKey (lib.reverseList emitters);
+      expected = true;
+    };
+    test-control-relatum-moves-key = {
+      expr =
+        bindingKey emitters != bindingKey (withRelata {
+          stylus = "sable";
+          leaf = "vellum";
+        });
+      expected = true;
+    };
+    test-control-label-swap-moves-key = {
+      expr =
+        bindingKey emitters != bindingKey (withRelata {
+          stylus = "vellum";
+          leaf = "ferrule";
+        });
+      expected = true;
     };
     # L14 — distinct keys are NOT dedup-collapsed: both configs survive evalModules.
     test-distinct-both-present = {

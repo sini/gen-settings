@@ -14,6 +14,13 @@
     # silent-and-wrong the moment they diverge. Collapsing while they still agree is free;
     # collapsing after they diverge is a migration.
     gen-schema.inputs.gen-identity.follows = "gen-identity";
+    # gen-scope's `mintStrata` mints the binding node the identity-keying suite hands to
+    # assembleHost's `entity` slot. CI-only: `lib/` never reads it. Its three roots follow this
+    # flake's so the node's identity and the stamp over it come from ONE mint.
+    gen-scope.url = "github:sini/gen-scope";
+    gen-scope.inputs.gen-prelude.follows = "gen-prelude";
+    gen-scope.inputs.gen-graph.follows = "gen-graph";
+    gen-scope.inputs.gen-identity.follows = "gen-identity";
     # nixpkgs is the CI runner's dependency (nix-unit harness, treefmt) and supplies the `lib` the
     # test modules use. It enters ONLY here (a VALUE in ci/), never a `lib/` dep — the library
     # (../lib) is nixpkgs-lib-free (ci/tests/purity.nix enforces this).
@@ -30,6 +37,7 @@
       gen-schema,
       gen-types,
       gen-identity,
+      gen-scope,
       ...
     }:
     let
@@ -50,6 +58,7 @@
       # computed by calling the primitive rather than transcribed from it.
       schema = gen-schema.lib;
       identity = gen-identity.lib;
+      scope = gen-scope.lib;
     in
     gen-harness.lib.mkCi {
       inherit inputs;
@@ -73,6 +82,7 @@
           genBind
           schema
           identity
+          scope
           ;
         # `prelude`, `graph` and `types` reach the suite because `tests/entry.nix` applies the
         # STANDALONE root entry with explicit arguments — which is what keeps that cell pure, since

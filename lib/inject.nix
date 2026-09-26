@@ -82,11 +82,11 @@ let
     };
 
   # assembleHost { entity; class; aspects; bindings ? } -> { <settingsKey> = <identity-keyed module>; }
-  #   entity — consuming entity (host/user registry entry) OR a cell record; either way MUST carry
-  #            id_hash (a plain entity's content-addressed hash, or a cell's canonical cell identity).
+  #   entity — consuming entity (a registry entry) OR a minted binding node's identity (ADR-0016
+  #            rulings 3–4), e.g. from gen-scope `mintStrata`; either way MUST carry id_hash.
   #   class  — class REGISTRY ENTRY; its `name` is the internal wrapIdentity key token.
   # Keys derive from id_hash pairs, never names, on the entity/aspect axes (identity law): distinct
-  # entities (or cells) with the same aspect yield distinct evalModules keys and are not
+  # entities (or binding nodes) with the same aspect yield distinct evalModules keys and are not
   # dedup-collapsed; the same (class, entity, aspect) reaching one eval twice carries an equal key
   # and merges once. Duplicate settingsKey within one call is E8 (a module would otherwise be
   # silently dropped by attrset collision — the failure identity keying exists to prevent).
@@ -105,7 +105,7 @@ let
           class;
       entityOk =
         if !(isAttrs entity && entity ? id_hash) then
-          throw "gen-settings: assembleHost (L14): `entity` must carry id_hash (a registry entry, or a cell record with a canonical cell identity)"
+          throw "gen-settings: assembleHost (L14): `entity` must carry id_hash (a registry entry, or a minted binding node's identity (ADR-0016 rulings 3–4), e.g. from gen-scope `mintStrata`)"
         else
           entity;
 
