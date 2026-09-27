@@ -232,7 +232,14 @@ in
         resolverFor = _field: resolveRef;
       };
     in
-    {
+    # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, so its own
+    # WHNF forced neither field — checkOptions/checkRequired sat unread until a caller happened to
+    # touch `.value` or `.provenance`, admitting a bad record at application (gen-memo eed0685's
+    # defect class: a check that fires only behind a later read). `checked` is cheap to force
+    # (structural only, R6) and this is the same idiom `mkSchema`'s `seq dotCheck` and
+    # `assembleHost`'s `seq classOk (seq entityOk …)` already use to fire their own door check at
+    # first force of the result.
+    seq checked {
       value = mapAttrs (
         field: v:
         substDeep resolveRef {
@@ -256,7 +263,8 @@ in
   resolveAll =
     args:
     let
-      batch = (prelude.checkRequired "gen-settings.resolveAll" [ "batch" ] args).batch;
+      checked = prelude.checkRequired "gen-settings.resolveAll" [ "batch" ] args;
+      batch = checked.batch;
       keyed = map (m: m // { _key = m.key or m.schema.aspect.name; }) batch;
       keys = map (m: m._key) keyed;
       counts = foldl' (acc: k: acc // { ${k} = (acc.${k} or 0) + 1; }) { } keys;
@@ -370,7 +378,12 @@ in
         else
           seq checkedGraph x;
     in
-    {
+    # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, routing
+    # `checked` (the `batch` required-field check) only through `keyed`/`theGraph`/`raws`, each
+    # itself lazy — so a batch missing `batch` sailed through `resolveAll`'s own application and
+    # was admitted until a caller forced `.value`, `.provenance` or `.graph`. Same fix as
+    # `resolveOne` and the same idiom `mkSchema`/`assembleHost` already use.
+    seq checked {
       value = gate (
         listToAttrs (
           map (m: {

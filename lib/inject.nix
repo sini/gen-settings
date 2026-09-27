@@ -97,7 +97,11 @@ let
         inherit contracts provenance;
       };
     in
-    {
+    # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, so its own
+    # WHNF forced none of `module`/`wrapped`/`signature` — checkOptions/checkRequired sat unread
+    # until a caller touched one of them, admitting a bad record at application. Same idiom
+    # `mkSchema`'s `seq dotCheck` and `assembleHost`'s `builtins.seq classOk (…)` already use.
+    builtins.seq checked {
       inherit (result) module wrapped signature;
     };
 
