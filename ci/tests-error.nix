@@ -43,10 +43,15 @@ let
     mkSchema
     resolveOne
     resolveAll
+    renderAddress
+    injectAspectSettings
+    assembleHost
     ;
   # The suite's own registry-entry stand-ins, so the control's notion of a well-formed target is the
   # one every other cell in this repository uses. `_`-prefixed, hence not itself a test module.
   fx = import ./tests/_fixtures/fixtures.nix { inherit lib; };
+  inherit (fx.entities) axon;
+  inherit (fx.classes) nixos;
   inherit (fx.aspects)
     theme
     terminal
@@ -499,6 +504,140 @@ in
       test-control-provenance-arm-substitutes-at-the-same-force-point = {
         expr = (builtins.head oneData.provenance.f).value;
         expected = "RESOLVED";
+      };
+    };
+
+    # THE DOOR-CHECK BYTES (den-hoag-7gp66 P1) — R6's naming, pinned per door. `ci/tests/door-checks.nix`
+    # pins that each door's violations are CATCHABLE; a boolean cannot see WHICH refusal fired, so
+    # WHICH is pinned here, one golden per violation type per door, in gen-prelude's own goldens'
+    # style (`gen-prelude/ci/tests/door.nix`): `[.]` for a literal dot, `[(]`/`[)]` for literal
+    # parens — never `\.`/`\(` — so the pattern reads as the message with its metacharacters
+    # neutralised rather than as a second, escaped copy of it.
+    #
+    # RECORD doors (`mkSchema`, `resolveAll`) carry only the missing-field golden: an unknown field
+    # is R5's admitted case, and `ci/tests/door-checks.nix` already pins that it does not throw —
+    # there is no message to pin for a call that answers.
+    flake.testsError.door-checks = {
+      test-mkschema-missing-required-field-message = {
+        expr = mkSchema { aspect = theme; };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]mkSchema: required field 'fields' is missing [(]required: 'aspect', 'fields'[)] [(]in prelude[.]checkRequired[)]$";
+        };
+      };
+
+      test-resolveall-missing-required-field-message = {
+        expr = resolveAll { };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]resolveAll: required field 'batch' is missing [(]required: 'batch'[)] [(]in prelude[.]checkRequired[)]$";
+        };
+      };
+
+      test-renderaddress-missing-required-field-message = {
+        expr = renderAddress { field = "f"; };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]renderAddress: required field 'aspect' is missing [(]required: 'aspect'[)] [(]in prelude[.]checkRequired[)]$";
+        };
+      };
+      test-renderaddress-unknown-option-message = {
+        expr = renderAddress {
+          aspect = theme;
+          zzsettl3xq = 1;
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]renderAddress: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'aspect', 'field', 'path'[)] [(]in prelude[.]checkOptions[)]$";
+        };
+      };
+
+      test-resolveone-missing-required-field-message = {
+        expr = resolveOne { layers = [ ]; };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]resolveOne: required field 'schema' is missing [(]required: 'schema', 'layers'[)] [(]in prelude[.]checkRequired[)]$";
+        };
+      };
+      test-resolveone-unknown-option-message = {
+        expr = resolveOne {
+          schema = mkSchema {
+            aspect = theme;
+            fields = { };
+          };
+          layers = [ ];
+          zzsettl3xq = 1;
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]resolveOne: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'schema', 'layers', 'resolveRef', 'strict'[)] [(]in prelude[.]checkOptions[)]$";
+        };
+      };
+
+      test-injectaspectsettings-missing-required-field-message = {
+        expr = injectAspectSettings {
+          aspect = theme;
+          classContent = { };
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]injectAspectSettings: required field 'settings' is missing [(]required: 'aspect', 'classContent', 'settings'[)] [(]in prelude[.]checkRequired[)]$";
+        };
+      };
+      test-injectaspectsettings-unknown-option-message = {
+        expr = injectAspectSettings {
+          aspect = theme;
+          classContent = { };
+          settings = { };
+          zzsettl3xq = 1;
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]injectAspectSettings: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'aspect', 'classContent', 'settings', 'settingsKey', 'bindings', 'contracts', 'provenance'[)] [(]in prelude[.]checkOptions[)]$";
+        };
+      };
+
+      test-assemblehost-missing-required-field-message = {
+        expr = assembleHost {
+          entity = axon;
+          class = nixos;
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]assembleHost: required field 'aspects' is missing [(]required: 'entity', 'class', 'aspects'[)] [(]in prelude[.]checkRequired[)]$";
+        };
+      };
+      test-assemblehost-unknown-option-message = {
+        expr = assembleHost {
+          entity = axon;
+          class = nixos;
+          aspects = [ ];
+          zzsettl3xq = 1;
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg = "^gen-settings[.]assembleHost: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'entity', 'class', 'aspects', 'bindings'[)] [(]in prelude[.]checkOptions[)]$";
+        };
+      };
+
+      # LIVE CONTROL, same run, same output: a well-formed call on each door class answers rather
+      # than throwing — the vacuity every cell above asserting a refusal invites, discharged here
+      # for the RECORD arm (`mkSchema`) and the MIXED arm (`assembleHost`) alike.
+      test-control-mkschema-well-formed-call-answers = {
+        expr =
+          (mkSchema {
+            aspect = theme;
+            fields = { };
+          }).aspect.name;
+        expected = "theme";
+      };
+      test-control-assemblehost-well-formed-call-answers = {
+        expr = assembleHost {
+          entity = axon;
+          class = nixos;
+          aspects = [ ];
+        };
+        expected = { };
       };
     };
   };

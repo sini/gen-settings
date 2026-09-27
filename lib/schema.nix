@@ -51,12 +51,19 @@ in
   # mkSchema { aspect; fields } -> { aspect; fields; strategies; defaults; }
   #   aspect  — registry entry carrying id_hash (the declaring identity)
   #   fields  — { <bare-key> = { default; merge ? "replace"; }; }
+  #
+  # RECORD class (den-hoag-7gp66 P1, gate C1/R5): a native closed formal aborts uncatchably on a
+  # missing field and on an unknown one alike. `checkRequired` keeps the first refusal, catchable
+  # and by name, and admits the second (R5's stated price — a data record is open).
   mkSchema =
-    {
-      aspect,
-      fields,
-    }:
+    args:
     let
+      checked = prelude.checkRequired "gen-settings.mkSchema" [
+        "aspect"
+        "fields"
+      ] args;
+      aspect = checked.aspect;
+      fields = checked.fields;
       names = attrNames fields;
 
       # Eager, name-level: dotted keys are E1 the moment the schema is used at all — the

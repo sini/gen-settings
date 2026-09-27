@@ -192,22 +192,39 @@ in
   # resolveOne { schema; layers; resolveRef ?; strict ? true } -> { value; provenance; }
   # Standalone resolver: takes an external address-resolver (default throws E4). Rich batch-level
   # ref addressing (E4/E5) lives in resolveAll, where the batch/graph context exists.
+  #
+  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
+  # moves the options off the record.
   resolveOne =
-    {
-      schema,
-      layers,
-      resolveRef ? (
-        {
-          aspect,
-          path,
-        }:
-        throw "gen-settings: unresolved ref (E4): no resolveRef supplied to resolveOne for target ${
-          renderAddress { inherit aspect; }
-        }"
-      ),
-      strict ? true,
-    }:
+    args:
     let
+      checked =
+        prelude.checkOptions "gen-settings.resolveOne"
+          [
+            "schema"
+            "layers"
+            "resolveRef"
+            "strict"
+          ]
+          (
+            prelude.checkRequired "gen-settings.resolveOne" [
+              "schema"
+              "layers"
+            ] args
+          );
+      schema = checked.schema;
+      layers = checked.layers;
+      resolveRef =
+        checked.resolveRef or (
+          {
+            aspect,
+            path,
+          }:
+          throw "gen-settings: unresolved ref (E4): no resolveRef supplied to resolveOne for target ${
+            renderAddress { inherit aspect; }
+          }"
+        );
+      strict = checked.strict or true;
       # Standalone: one resolver serves every field, so the field index is discarded here. The
       # batch resolver in resolveAll is the one that uses it.
       m = foldMember {
@@ -233,9 +250,13 @@ in
   # forcing every contribution position to WHNF — before any resolved value. Ref routing
   # knot-ties by id_hash; laziness supplies evaluation order, static acyclicity guarantees
   # productivity (no toposort needed or performed).
+  #
+  # RECORD class (den-hoag-7gp66 P1, R5): `checkRequired` refuses a missing `batch` by name,
+  # catchably, and admits an extra field (R5's stated price).
   resolveAll =
-    { batch }:
+    args:
     let
+      batch = (prelude.checkRequired "gen-settings.resolveAll" [ "batch" ] args).batch;
       keyed = map (m: m // { _key = m.key or m.schema.aspect.name; }) batch;
       keys = map (m: m._key) keyed;
       counts = foldl' (acc: k: acc // { ${k} = (acc.${k} or 0) + 1; }) { } keys;

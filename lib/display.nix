@@ -16,13 +16,20 @@ in
   #   "aspect(theme#a1b2c3d4)"            (aspect only)
   #   "aspect(theme#a1b2c3d4).font"       (aspect + field)
   #   "aspect(theme#a1b2c3d4).font.mono"  (aspect + field-headed path)
+  #
+  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
+  # moves the options off the record.
   renderAddress =
-    {
-      aspect,
-      field ? null,
-      path ? null,
-    }:
+    args:
     let
+      checked = prelude.checkOptions "gen-settings.renderAddress" [
+        "aspect"
+        "field"
+        "path"
+      ] (prelude.checkRequired "gen-settings.renderAddress" [ "aspect" ] args);
+      aspect = checked.aspect;
+      field = checked.field or null;
+      path = checked.path or null;
       base = "aspect(${aspect.name}#${shortHash aspect.id_hash})";
       fieldPart = if field == null then "" else ".${field}";
       pathPart = if path == null then "" else ".${concatStringsSep "." path}";

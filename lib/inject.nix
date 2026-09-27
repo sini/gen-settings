@@ -55,17 +55,37 @@ let
   # The injected settings binding is namespaced: settings = { ${settingsKey} = <resolved>; }, so
   # content reads `settings.<key>.<field>`. gen-bind's default `bindWins` shadows stray same-named
   # module args; lib/config/pkgs still flow from the module system (never injected).
+  #
+  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
+  # moves the options off the record.
   injectAspectSettings =
-    {
-      aspect,
-      classContent,
-      settings,
-      settingsKey ? aspect.name,
-      bindings ? { },
-      contracts ? { },
-      provenance ? { },
-    }:
+    args:
     let
+      checked =
+        prelude.checkOptions "gen-settings.injectAspectSettings"
+          [
+            "aspect"
+            "classContent"
+            "settings"
+            "settingsKey"
+            "bindings"
+            "contracts"
+            "provenance"
+          ]
+          (
+            prelude.checkRequired "gen-settings.injectAspectSettings" [
+              "aspect"
+              "classContent"
+              "settings"
+            ] args
+          );
+      aspect = checked.aspect;
+      classContent = checked.classContent;
+      settings = checked.settings;
+      settingsKey = checked.settingsKey or aspect.name;
+      bindings = checked.bindings or { };
+      contracts = checked.contracts or { };
+      provenance = checked.provenance or { };
       allBindings = bindings // {
         settings = {
           ${settingsKey} = settings;
@@ -90,14 +110,30 @@ let
   # dedup-collapsed; the same (class, entity, aspect) reaching one eval twice carries an equal key
   # and merges once. Duplicate settingsKey within one call is E8 (a module would otherwise be
   # silently dropped by attrset collision — the failure identity keying exists to prevent).
+  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
+  # moves the options off the record.
   assembleHost =
-    {
-      entity,
-      class,
-      aspects,
-      bindings ? { },
-    }:
+    args:
     let
+      checked =
+        prelude.checkOptions "gen-settings.assembleHost"
+          [
+            "entity"
+            "class"
+            "aspects"
+            "bindings"
+          ]
+          (
+            prelude.checkRequired "gen-settings.assembleHost" [
+              "entity"
+              "class"
+              "aspects"
+            ] args
+          );
+      entity = checked.entity;
+      class = checked.class;
+      aspects = checked.aspects;
+      bindings = checked.bindings or { };
       classOk =
         if !(isAttrs class && class ? name) then
           throw "gen-settings: assembleHost (L14): `class` must be a class registry entry (carrying a name), never a class-name string"
