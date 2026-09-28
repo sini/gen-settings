@@ -160,12 +160,16 @@ in
       # The derivation, handed to its owner: contributions in, hops out, adjacency and node set
       # built there. What crosses is a scan and a projection — gen-graph never learns what a ref
       # is, and the field address travels as an opaque key.
-      scanned = graph.fromScan {
-        items = map (c: c // { id = nodeKey c; }) allContribs;
-        scan = refsIn;
-        project = r: nodeKey (targetOf r);
-        nodeData = declaredMap;
-      };
+      scanned =
+        graph.fromScan
+          {
+            nodeData = declaredMap;
+          }
+          {
+            items = map (c: c // { id = nodeKey c; }) allContribs;
+            scan = refsIn;
+            project = r: nodeKey (targetOf r);
+          };
 
       # The hops, restated in this library's vocabulary. The reference rides on the derived edge,
       # so naming an address costs no second scan of the contribution.
