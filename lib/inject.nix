@@ -92,10 +92,9 @@ let
         };
       };
       result = bind.wrap {
-        module = classContent;
         bindings = allBindings;
         inherit contracts provenance;
-      };
+      } classContent;
     in
     # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, so its own
     # WHNF forced none of `module`/`wrapped`/`signature` — checkOptions/checkRequired sat unread
@@ -182,11 +181,7 @@ let
             }
             .${k}
           );
-          idModule = bind.wrapIdentity {
-            class = classOk.name;
-            module = inj.module;
-            identity = stamp;
-          };
+          idModule = bind.wrapIdentity { } classOk.name stamp inj.module;
         in
         {
           name = a._key;
