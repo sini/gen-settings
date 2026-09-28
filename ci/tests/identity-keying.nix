@@ -151,12 +151,7 @@ let
     stylus = "ferrule";
     leaf = "vellum";
   };
-  mintAll =
-    es:
-    scope.mintStrata {
-      kinds = { };
-      emitters = es;
-    };
+  mintAll = es: scope.mintStrata { } es;
   minted = mintAll emitters;
   # The caller adapts the node record to the slot; assembleHost reads `id_hash` and nothing else.
   bindingFill = es: {
