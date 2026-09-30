@@ -144,7 +144,7 @@ let
           class;
       entityOk =
         if !(isAttrs entity && entity ? id_hash) then
-          throw "gen-settings: assembleHost (L14): `entity` must carry id_hash (a registry entry, or a minted binding node's identity (ADR-0016 rulings 3–4), e.g. from gen-scope `mintStrata`)"
+          throw "gen-settings: assembleHost (L14): `entity` must carry id_hash (a registry entry, or a binding node's identity, which the one identity function mints, e.g. from gen-scope `mintStrata`)"
         else
           entity;
 
