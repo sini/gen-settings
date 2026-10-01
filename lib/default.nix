@@ -56,7 +56,14 @@ let
 in
 {
   inherit (schemaModule) mkSchema;
-  inherit (declaration) mkDeclaration isDeclaration declarationsIn;
+  inherit (declaration)
+    mkDeclaration
+    isFieldDeclaration
+    fieldDeclarationsIn
+    ref
+    isRef
+    refsIn
+    ;
   inherit (refGraphModule) refGraph assertAcyclic renderCycles;
   inherit (resolve) resolveOne resolveAll;
   inherit (inject) injectAspectSettings assembleHost;

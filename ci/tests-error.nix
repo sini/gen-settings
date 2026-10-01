@@ -1,6 +1,6 @@
 # THE SECOND TEST OUTPUT — cells whose subject is a REFUSAL'S MESSAGE, and the runner that reads them.
 #
-# `ref` refuses a target carrying no `id_hash`, and the refusal is this library's E6 text: the
+# `mkDeclaration` refuses a target carrying no `id_hash`, and the refusal is this library's E6 text: the
 # identity law is stated at the boundary, before the datum is constructed. THAT it refuses is a
 # boolean and `builtins.tryEval` can assert it — `ci/tests/resolution-errors.nix` already does.
 # WHICH refusal fired is a claim about the message, and `tryEval` yields only `success`, never the
@@ -172,7 +172,7 @@ let
   # a result disagreeing with itself rather than two exports disagreeing with each other.
   #
   # The two constructions differ in exactly one thing, and nothing else, BY CONSTRUCTION: the same
-  # `ref` value sits in the field's value, or inside a function body in it. A control assembled as
+  # `mkDeclaration` value sits in the field's value, or inside a function body in it. A control assembled as
   # its own literal could drift from the construction it controls; this one cannot.
   substSubject =
     value:
@@ -209,7 +209,7 @@ in
 
       # LIVE CONTROL, same run: the same call on a target that DOES carry `id_hash` answers, and the
       # identity it answers with is the one it was handed. Without it the cell above is satisfied by
-      # a `ref` that refuses everything, which is the vacuity an assertion about a refusal invites. A
+      # a `mkDeclaration` that refuses everything, which is the vacuity an assertion about a refusal invites. A
       # control has to run in the same invocation as the thing it controls, so it stays on this
       # output — an `expected` cell among `expectedError` ones on purpose.
       test-e6-control-well-formed-target-answers = {
@@ -408,7 +408,7 @@ in
 
     # THE SUBSTITUTION REFUSES WHAT THE SCAN REFUSES — and says so at the position it refuses.
     #
-    # `declarationsIn` derives the dependency graph and its domain is data; `substDeep` produces the value.
+    # `fieldDeclarationsIn` derives the dependency graph and its domain is data; `substDeep` produces the value.
     # `resolveOne` is the surface where the difference is observable: its VALUE half reaches
     # `substDeep` without passing the scan, so while the dispatch ended in a bare `else v` a
     # function-valued field came back AS THE LAMBDA on that half while the PROVENANCE half of the

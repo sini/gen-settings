@@ -25,7 +25,7 @@
 let
   inherit (genSettings)
     mkSchema
-    declarationsIn
+    fieldDeclarationsIn
     refGraph
     assertAcyclic
     mkDeclaration
@@ -101,18 +101,18 @@ in
     # ── pair 1 ──
     # CONTROL: a ref in data is one hop. Unchanged by the disposition.
     test-control-ref-in-data-is-one-hop = {
-      expr = builtins.length (declarationsIn refInData);
+      expr = builtins.length (fieldDeclarationsIn refInData);
       expected = 1;
     };
     # THE DISCRIMINATOR: the same ref inside a function body is REFUSED. Under the skipping scan
     # this evaluates to `[ ]` without throwing and the assertion goes red.
     test-ref-in-function-body-is-refused = {
-      expr = throws (declarationsIn refInFunction);
+      expr = throws (fieldDeclarationsIn refInFunction);
       expected = true;
     };
     # CONTROL: ordinary settings data is untouched, so `throws` is not stuck true.
     test-control-plain-data-is-accepted = {
-      expr = throws (declarationsIn {
+      expr = throws (fieldDeclarationsIn {
         a = 1;
         b = [ "x" ];
         c = {

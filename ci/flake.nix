@@ -70,6 +70,17 @@
       # own output: `./tests-error.nix`, read by `nix-unit --flake ./ci#testsError`.
       testModules = ./tests;
       extraModules = [
+        # `ref`, `isRef` and `refsIn` are TOMBSTONES (lib/declaration.nix, THE RETIRED NAMES;
+        # den-hoag-2zjg1): `checks.root-surface` excludes them from the walk, and the generated
+        # `root-surface-retired.test-retired-*` cells pin each exact message at the root seam.
+        {
+          gen.ci.rootSurface.retired.ref =
+            "gen-settings: `ref` is renamed `mkDeclaration`. A value denoting a node is a declaration (Neron et al. 2015), so the constructor is `mkDeclaration <registry-entry> <path>`; the arguments and the behaviour are unchanged.";
+          gen.ci.rootSurface.retired.isRef =
+            "gen-settings: `isRef` is renamed `isFieldDeclaration`; the predicate and its behaviour are unchanged.";
+          gen.ci.rootSurface.retired.refsIn =
+            "gen-settings: `refsIn` is renamed `fieldDeclarationsIn`; the scan and its behaviour are unchanged.";
+        }
         # `nix run ./ci#perf-bench` — the driver for ci/perf-bench.nix.
         ./perf-bench-app.nix
         # The `flake.testsError` cells; gen-harness wires the `ci-error` hook that reads them.

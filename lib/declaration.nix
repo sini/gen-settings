@@ -31,8 +31,16 @@ in
 {
   # The datum's predicate and scan, unchanged: gen-settings adds nothing to them, and wrapping
   # them would put a second implementation of a graph-bearing shape in the consumer.
-  isDeclaration = schema.isFieldDeclaration;
-  declarationsIn = schema.fieldDeclarationsIn;
+  isFieldDeclaration = schema.isFieldDeclaration;
+  fieldDeclarationsIn = schema.fieldDeclarationsIn;
+
+  # ── THE RETIRED NAMES ──
+  # Tombstones rather than silent aliases: each old name is refused by name and the refusal names its
+  # replacement. Published values, not lambdas, so reaching a name refuses as well as applying it;
+  # no message interpolates anything.
+  ref = throw "gen-settings: `ref` is renamed `mkDeclaration`. A value denoting a node is a declaration (Neron et al. 2015), so the constructor is `mkDeclaration <registry-entry> <path>`; the arguments and the behaviour are unchanged.";
+  isRef = throw "gen-settings: `isRef` is renamed `isFieldDeclaration`; the predicate and its behaviour are unchanged.";
+  refsIn = throw "gen-settings: `refsIn` is renamed `fieldDeclarationsIn`; the scan and its behaviour are unchanged.";
 
   # mkDeclaration aspectEntry path -> declaration record
   #   aspectEntry MUST carry id_hash (identity law) — a string or any value without id_hash

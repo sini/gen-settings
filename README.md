@@ -37,7 +37,7 @@ gen-prelude ─┐
 gen-algebra ─┤
 gen-bind    ─┼─→ gen-settings ─→ den-hoag (four-concern assembly)
 gen-graph   ─┤
-gen-schema  ─┘  (the ref datum + id_hash)
+gen-schema  ─┘  (the declaration datum + id_hash)
 ```
 
 gen-settings is an L2 contract library on the gen substrate. den-hoag composes it: per cell, a containment chain × D/I chain becomes the ordered layer list, gen-settings folds it, and the parametric aspect content consumes the resolved settings through the injection construct.
@@ -108,9 +108,9 @@ settings.font = { default = _: mkDeclaration config.aspects.theme [ "font" ]; };
 #   position data, or keep the function outside the scanned structure.
 ```
 
-Nix exposes no primitive that inspects a function body, so a ref inside a closure is unreachable to any structural scan — and skipping it fails *open*: the edge is never derived, a cycle it would have closed goes undetected, and the unresolved ref record leaks into the resolved value as data. Refusing eliminates the case rather than declaring it unanalysable, so every dependence fact `refGraph` reports is a derived one. A schema is plain data by its own contract, so on conforming input the refusal fires never.
+Nix exposes no primitive that inspects a function body, so a declaration inside a closure is unreachable to any structural scan — and skipping it fails *open*: the edge is never derived, a cycle it would have closed goes undetected, and the unresolved declaration record leaks into the resolved value as data. Refusing eliminates the case rather than declaring it unanalysable, so every dependence fact `refGraph` reports is a derived one. A schema is plain data by its own contract, so on conforming input the refusal fires never.
 
-The refusal is deliberately wider than the hazard — a ref-free function refuses too, at any depth — and if it is ever genuinely in the way, the sanctioned escape is a **declared** schema-level annotation, not a quieter scan. gen-schema's README carries that path under *If the refusal is in your way*; it is where the contract is owned.
+The refusal is deliberately wider than the hazard — a declaration-free function refuses too, at any depth — and if it is ever genuinely in the way, the sanctioned escape is a **declared** schema-level annotation, not a quieter scan. gen-schema's README carries that path under *If the refusal is in your way*; it is where the contract is owned.
 
 **And so does the substitution.** The scan derives the graph, `substDeep` produces the value, and its dispatch is total over that same domain — so `resolveOne` refuses a function-valued field during resolution too, on **both** halves of its result, naming the field: `gen-settings: cannot substitute into a value of type 'lambda': aspect(theme#a1b2c3d4).font — …`. Admitting an input the scan refuses would produce a value from an input no dependency edge was ever derived over, which is the same static/applicative requirement read from the other end.
 
@@ -125,7 +125,7 @@ Every field's provenance is an ordered chain of structured entries `{ scope; ren
 ## API Reference
 
 See `gen-specs/gen-settings/REFERENCE.md` in the den-architecture papers repository for the full
-signature-level reference — reference specs live there, not in the library repo. Public surface: `mkSchema`, `mkDeclaration` / `isDeclaration` / `declarationsIn`, `refGraph` / `assertAcyclic` / `renderCycles`, `resolveOne` / `resolveAll`, `injectAspectSettings` / `assembleHost`, `renderAddress`.
+signature-level reference — reference specs live there, not in the library repo. Public surface: `mkSchema`, `mkDeclaration` / `isFieldDeclaration` / `fieldDeclarationsIn`, `refGraph` / `assertAcyclic` / `renderCycles`, `resolveOne` / `resolveAll`, `injectAspectSettings` / `assembleHost`, `renderAddress`.
 
 ## Design Constraints
 

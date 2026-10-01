@@ -240,7 +240,7 @@ in
   # (which owns the ref datum) and the prelude the scan walks with have to be the real ones.
   flake.tests.entry.test-the-shims-library-is-live = {
     expr = builtins.length (
-      standalone.declarationsIn { x = standalone.mkDeclaration { id_hash = "h"; } [ "a" ]; }
+      standalone.fieldDeclarationsIn { x = standalone.mkDeclaration { id_hash = "h"; } [ "a" ]; }
     );
     expected = 1;
   };

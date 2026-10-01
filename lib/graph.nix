@@ -1,6 +1,6 @@
 # refGraph / assertAcyclic — the static cross-aspect dependency graph.
 #
-# Field-level granularity: a contribution to address (A, f) containing `ref B [g, …]` yields
+# Field-level granularity: a contribution to address (A, f) containing `mkDeclaration B [g, …]` yields
 # edge (A,f) -> (B,g). The graph is a pure function of schemas + layer values (structure only;
 # `resolveRef` is never invoked) and is CONSERVATIVE over pre-fold values — edges are collected
 # from every layer contribution and every schema default, before any shadowing (L17). This is
@@ -68,7 +68,7 @@ let
     map
     concatStringsSep
     ;
-  inherit (declaration) declarationsIn;
+  inherit (declaration) fieldDeclarationsIn;
   inherit (display) renderAddress;
 
   # Internal graph key — id_hash + field. Identity law: keys are id_hash-based, names are
@@ -167,7 +167,7 @@ in
           }
           {
             items = map (c: c // { id = nodeKey c; }) allContribs;
-            scan = declarationsIn;
+            scan = fieldDeclarationsIn;
             project = r: nodeKey (targetOf r);
           };
 

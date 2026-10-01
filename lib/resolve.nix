@@ -30,7 +30,7 @@ let
     head
     seq
     ;
-  inherit (declaration) isDeclaration declarationsIn;
+  inherit (declaration) isFieldDeclaration fieldDeclarationsIn;
   inherit (display) renderAddress shortHash;
   inherit (graph) refGraph assertAcyclic;
 
@@ -56,7 +56,7 @@ let
   # Deep ref substitution. Refs are merge-atomic (§2.2): a ref is replaced wholesale, never
   # merged into — so fold-then-substitute equals folding pre-substituted inputs (L3).
   #
-  # ★ THE DISPATCH IS TOTAL, AND IT REFUSES WHAT THE SCAN REFUSES. `declarationsIn` derives the dependency
+  # ★ THE DISPATCH IS TOTAL, AND IT REFUSES WHAT THE SCAN REFUSES. `fieldDeclarationsIn` derives the dependency
   #   graph and its domain is data: a function in a scanned position is refused there, never
   #   skipped as a leaf. This produces the value. Were substitution to admit an input the scan
   #   refuses, a value would be produced from an input no edge was ever derived over — and the
@@ -93,7 +93,7 @@ let
 
   substDeep =
     resolve: at: v:
-    if isDeclaration v then
+    if isFieldDeclaration v then
       resolve { inherit (v) aspect path; }
     else if isAttrs v then
       mapAttrs (_: e: substDeep resolve at e) v
@@ -123,7 +123,7 @@ let
   # TARGET coordinate each hop record below inherits from the scan.
   refineEntry = sourceAspect: resolverFor: field: entry: {
     inherit (entry.layer) scope rendered via;
-    refs = map (r: { inherit (r) at aspect path; }) (declarationsIn entry.value);
+    refs = map (r: { inherit (r) at aspect path; }) (fieldDeclarationsIn entry.value);
     value = substDeep (resolverFor field) {
       aspect = sourceAspect;
       inherit field;

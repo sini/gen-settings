@@ -28,7 +28,7 @@ let
     resolveAll
     refGraph
     mkDeclaration
-    declarationsIn
+    fieldDeclarationsIn
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   inherit (fx.aspects) theme terminal;
@@ -255,7 +255,7 @@ in
       expected = true;
     };
 
-    # E6 — ref rejects non-identity targets at application time.
+    # E6 — mkDeclaration rejects non-identity targets at application time.
     test-e6-string-target = {
       expr = throws (mkDeclaration "theme" [ "x" ]);
       expected = true;
@@ -271,15 +271,37 @@ in
       expected = true;
     };
 
-    # L11 — identity in ≡ out: a ref carries the given entry (same id_hash), never a string.
+    # L11 — identity in ≡ out: a declaration carries the given entry (same id_hash), never a string.
     test-l11-ref-identity = {
-      expr = (lib.head (declarationsIn (mkDeclaration theme [ "x" ]))).aspect.id_hash;
+      expr = (lib.head (fieldDeclarationsIn (mkDeclaration theme [ "x" ]))).aspect.id_hash;
       expected = theme.id_hash;
     };
     # L11 — graph node aspects are the identical input entries (id_hash-equal).
     test-l11-graph-node-identity = {
       expr = lib.any (n: n.aspect.id_hash == theme.id_hash) (refGraph batchE5).nodes;
       expected = true;
+    };
+
+    # The three retired names are published throws: reaching each refuses CATCHABLY, and the live
+    # control beside them is each replacement answering. WHICH refusal fired, naming the replacement,
+    # is pinned at the root seam by the harness-generated `root-surface-retired.test-retired-*`.
+    test-old-names-refused-catchably = {
+      expr = builtins.mapAttrs (_: n: !(throws genSettings.${n})) {
+        ref = "ref";
+        isRef = "isRef";
+        refsIn = "refsIn";
+        mkDeclaration = "mkDeclaration";
+        isFieldDeclaration = "isFieldDeclaration";
+        fieldDeclarationsIn = "fieldDeclarationsIn";
+      };
+      expected = {
+        ref = false;
+        isRef = false;
+        refsIn = false;
+        mkDeclaration = true;
+        isFieldDeclaration = true;
+        fieldDeclarationsIn = true;
+      };
     };
   };
 }
