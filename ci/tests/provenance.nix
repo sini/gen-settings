@@ -11,7 +11,7 @@ let
   inherit (genSettings)
     mkSchema
     resolveOne
-    ref
+    mkDeclaration
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   theme = fx.aspects.theme;
@@ -74,7 +74,7 @@ let
         rendered = "host";
         value = {
           cfg = {
-            k = ref theme [
+            k = mkDeclaration theme [
               "font"
               "mono"
             ];
@@ -118,7 +118,7 @@ let
     aspect = fx.aspects.terminal;
     fields = {
       font = {
-        default = ref fx.aspects.absent [ "gone" ];
+        default = mkDeclaration fx.aspects.absent [ "gone" ];
       };
     };
   };
@@ -234,7 +234,7 @@ in
       expr = (lib.last shadowChain).value;
       expected = "concrete";
     };
-    # L15.4 — forcing the shadowed entry's OWN value throws (ref followed only then).
+    # L15.4 — forcing the shadowed entry's OWN value throws (mkDeclaration followed only then).
     test-shadow-entry-throws-on-force = {
       expr = (builtins.tryEval (builtins.deepSeq (lib.head shadowChain).value true)).success;
       expected = false;

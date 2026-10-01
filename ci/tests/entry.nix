@@ -229,7 +229,8 @@ in
   # ★ THE COMPARISON IS SHOWN ABLE TO FAIL, in the same run. Without this, an `attrNames` equality
   # between two values that happen to be the same import is a tautology nobody has checked.
   flake.tests.entry.test-control-the-comparison-discriminates = {
-    expr = builtins.attrNames standalone == builtins.attrNames (removeAttrs genSettings [ "ref" ]);
+    expr =
+      builtins.attrNames standalone == builtins.attrNames (removeAttrs genSettings [ "mkDeclaration" ]);
     expected = false;
   };
 
@@ -238,7 +239,9 @@ in
   # builds a reference and finds it again with the structural scan, so both the injected gen-schema
   # (which owns the ref datum) and the prelude the scan walks with have to be the real ones.
   flake.tests.entry.test-the-shims-library-is-live = {
-    expr = builtins.length (standalone.refsIn { x = standalone.ref { id_hash = "h"; } [ "a" ]; });
+    expr = builtins.length (
+      standalone.declarationsIn { x = standalone.mkDeclaration { id_hash = "h"; } [ "a" ]; }
+    );
     expected = 1;
   };
 

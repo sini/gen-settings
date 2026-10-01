@@ -1,4 +1,4 @@
-# T9 ref-function-hazard. The ref scan's domain is DATA, and a function in a scanned position is
+# T9 declaration-function-hazard. The ref scan's domain is DATA, and a function in a scanned position is
 # refused by name rather than treated as a leaf.
 #
 # ── WHY THIS FILE EXISTS, WHEN EVERY OTHER SUITE IS ALREADY GREEN ──
@@ -25,10 +25,10 @@
 let
   inherit (genSettings)
     mkSchema
-    refsIn
+    declarationsIn
     refGraph
     assertAcyclic
-    ref
+    mkDeclaration
     resolveOne
     resolveAll
     ;
@@ -50,7 +50,7 @@ let
     }) [ ];
 
   # ── pair 1: the same ref value, once as data and once inside a function body ──
-  r = ref terminal [ "g" ];
+  r = mkDeclaration terminal [ "g" ];
   refInData = {
     k = r;
   };
@@ -61,12 +61,12 @@ let
   # ── pair 2: the same 2-cycle theme.f -> terminal.g -> theme.f, with the back edge routed
   #    once wholly through data and once with one hop inside a function body ──
   cyclicData = [
-    (onlyDefault theme "f" (ref terminal [ "g" ]))
-    (onlyDefault terminal "g" (ref theme [ "f" ]))
+    (onlyDefault theme "f" (mkDeclaration terminal [ "g" ]))
+    (onlyDefault terminal "g" (mkDeclaration theme [ "f" ]))
   ];
   cyclicViaFn = [
-    (onlyDefault theme "f" (ref terminal [ "g" ]))
-    (onlyDefault terminal "g" (_: ref theme [ "f" ]))
+    (onlyDefault theme "f" (mkDeclaration terminal [ "g" ]))
+    (onlyDefault terminal "g" (_: mkDeclaration theme [ "f" ]))
   ];
   # E3 fires from `cycles`, which is why the force point is the cycle list, not the graph record.
   graphRefuses = batch: throws (assertAcyclic (refGraph batch)).cycles;
@@ -97,22 +97,22 @@ let
   ];
 in
 {
-  flake.tests.ref-function-hazard = {
+  flake.tests.declaration-function-hazard = {
     # ── pair 1 ──
     # CONTROL: a ref in data is one hop. Unchanged by the disposition.
     test-control-ref-in-data-is-one-hop = {
-      expr = builtins.length (refsIn refInData);
+      expr = builtins.length (declarationsIn refInData);
       expected = 1;
     };
     # THE DISCRIMINATOR: the same ref inside a function body is REFUSED. Under the skipping scan
     # this evaluates to `[ ]` without throwing and the assertion goes red.
     test-ref-in-function-body-is-refused = {
-      expr = throws (refsIn refInFunction);
+      expr = throws (declarationsIn refInFunction);
       expected = true;
     };
     # CONTROL: ordinary settings data is untouched, so `throws` is not stuck true.
     test-control-plain-data-is-accepted = {
-      expr = throws (refsIn {
+      expr = throws (declarationsIn {
         a = 1;
         b = [ "x" ];
         c = {
@@ -139,7 +139,7 @@ in
     # true negative and the two rows above are not trivially true.
     test-control-acyclic-batch-does-not-refuse = {
       expr = graphRefuses [
-        (onlyDefault theme "f" (ref terminal [ "g" ]))
+        (onlyDefault theme "f" (mkDeclaration terminal [ "g" ]))
         (onlyDefault terminal "g" "concrete")
       ];
       expected = false;

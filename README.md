@@ -14,7 +14,7 @@ gen-settings resolves an aspect's settings — a static, introspectable schema o
 - [Core Concepts](#core-concepts)
   - [Schemas](#schemas)
   - [Layers and the Fold](#layers-and-the-fold)
-  - [Refs as Data](#refs-as-data)
+  - [Declarations as Data](#declarations-as-data)
   - [Structured Provenance](#structured-provenance)
   - [Injection](#injection)
 - [API Reference](#api-reference)
@@ -85,25 +85,25 @@ A layer is `{ scope; rendered; via; value; }`. `scope` is an attrset of registry
 
 The fold is gen-algebra's `foldLayersTraced`. Labels are fully opaque to it: replacing every label with any other value changes no resolved value (label opacity, pinned in both this lib's and gen-algebra's CI).
 
-### Refs as Data
+### Declarations as Data
 
 A schema default or any layer contribution may reference another aspect's resolved setting:
 
 ```nix
-settings.font = { default = ref config.aspects.theme [ "font" "mono" ]; };
+settings.font = { default = mkDeclaration config.aspects.theme [ "font" "mono" ]; };
 ```
 
-`ref` takes the aspect **registry entry** (never a string — a value without `id_hash` throws E6 at application time) and a field path list. The record and its scan are gen-schema's `fieldRef` family; what this library adds is the E6 diagnostic, the field-address graph over them, and resolution. Refs are **inert data** — no functions, no thunks — so schemas stay introspectable and the cross-aspect dependency graph is computable statically (`refGraph`). Cycles are a definition-time error (E3) naming every address in the cycle. Refs resolve during the fold (fold-then-substitute; refs are merge-atomic, so this equals folding pre-substituted inputs).
+`mkDeclaration` takes the aspect **registry entry** (never a string — a value without `id_hash` throws E6 at application time) and a field path list. The record and its scan are gen-schema's `mkFieldDeclaration` family; what this library adds is the E6 diagnostic, the field-address graph over them, and resolution. Refs are **inert data** — no functions, no thunks — so schemas stay introspectable and the cross-aspect dependency graph is computable statically (`refGraph`). Cycles are a definition-time error (E3) naming every address in the cycle. Refs resolve during the fold (fold-then-substitute; refs are merge-atomic, so this equals folding pre-substituted inputs).
 
 The static graph is **conservative over pre-fold values** and **structurally strict**: it forces every scanned contribution to WHNF and counts edges from refs a later `replace` layer would shadow. This is the honest cost of the static/applicative discipline (see [Theoretical Foundations](#theoretical-foundations)).
 
 **The scan refuses functions.** A function found in a scanned position throws, naming the position, rather than being passed over as a leaf:
 
 ```nix
-settings.font = { default = _: ref config.aspects.theme [ "font" ]; };
-# → error: gen-schema: fieldRefsIn: function at scanned position font — this scan's domain is data.
+settings.font = { default = _: mkDeclaration config.aspects.theme [ "font" ]; };
+# → error: gen-schema: fieldDeclarationsIn: function at scanned position font — this scan's domain is data.
 #   A function is refused rather than skipped … If this position is a computed value, express it
-#   where its reads stay visible — `fieldRef <instance> <path>` for a cross-instance read, or the
+#   where its reads stay visible — `mkFieldDeclaration <instance> <path>` for a cross-instance read, or the
 #   kind's `computed` hook for a value derived from collections and defs; otherwise, make the
 #   position data, or keep the function outside the scanned structure.
 ```
@@ -125,7 +125,7 @@ Every field's provenance is an ordered chain of structured entries `{ scope; ren
 ## API Reference
 
 See `gen-specs/gen-settings/REFERENCE.md` in the den-architecture papers repository for the full
-signature-level reference — reference specs live there, not in the library repo. Public surface: `mkSchema`, `ref` / `isRef` / `refsIn`, `refGraph` / `assertAcyclic` / `renderCycles`, `resolveOne` / `resolveAll`, `injectAspectSettings` / `assembleHost`, `renderAddress`.
+signature-level reference — reference specs live there, not in the library repo. Public surface: `mkSchema`, `mkDeclaration` / `isDeclaration` / `declarationsIn`, `refGraph` / `assertAcyclic` / `renderCycles`, `resolveOne` / `resolveAll`, `injectAspectSettings` / `assembleHost`, `renderAddress`.
 
 ## Design Constraints
 

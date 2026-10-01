@@ -98,7 +98,7 @@ let
       identity = identityLib;
     }
   );
-  inherit (gs) mkSchema refGraph ref;
+  inherit (gs) mkSchema refGraph mkDeclaration;
 
   A = {
     name = "chain";
@@ -110,7 +110,7 @@ let
   # The chain's terminal field: inert under "acyclic", a back-edge to a0 under "backedge".
   terminal =
     if stack == "backedge" then
-      ref A [ "a0" ]
+      mkDeclaration A [ "a0" ]
     else if stack == "acyclic" then
       "leaf"
     else
@@ -122,17 +122,17 @@ let
         {
           name = "a${s i}";
           value.default = [
-            (ref A [ "b${s i}" ])
-            (ref A [ "c${s i}" ])
+            (mkDeclaration A [ "b${s i}" ])
+            (mkDeclaration A [ "c${s i}" ])
           ];
         }
         {
           name = "b${s i}";
-          value.default = ref A [ "a${s (i + 1)}" ];
+          value.default = mkDeclaration A [ "a${s (i + 1)}" ];
         }
         {
           name = "c${s i}";
-          value.default = ref A [ "a${s (i + 1)}" ];
+          value.default = mkDeclaration A [ "a${s (i + 1)}" ];
         }
       ]) idx
     )

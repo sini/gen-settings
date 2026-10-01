@@ -1,4 +1,4 @@
-# T2 ref-substitution (L3). Fold-then-substitute equals folding pre-substituted inputs, because
+# T2 declaration-substitution (L3). Fold-then-substitute equals folding pre-substituted inputs, because
 # refs are merge-atomic (§2.2). Refs in defaults, in layer values, deep inside values, as list
 # elements under `append`, at sub-keys under `recursive` (shadowed and surviving). Merge-atomicity:
 # a ref shadowed by a later `replace` layer is never *followed* (sentinel resolveRef, never called).
@@ -12,7 +12,7 @@ let
   inherit (genSettings)
     mkSchema
     resolveOne
-    ref
+    mkDeclaration
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   foldLayers = genAlgebra.record.foldLayers;
@@ -29,7 +29,7 @@ let
     aspect = fx.aspects.terminal;
     fields = {
       font = {
-        default = ref theme [
+        default = mkDeclaration theme [
           "font"
           "mono"
         ];
@@ -63,10 +63,10 @@ let
       (fx.mkLayer {
         value = {
           cfg = {
-            k = ref theme [ "font" ];
+            k = mkDeclaration theme [ "font" ];
           }; # deep inside an attrset value
           ports = [
-            (ref theme [ "p1" ])
+            (mkDeclaration theme [ "p1" ])
             7
           ]; # ref as a list element
         };
@@ -95,7 +95,7 @@ let
     aspect = fx.aspects.terminal;
     fields = {
       font = {
-        default = ref fx.aspects.absent [ "gone" ];
+        default = mkDeclaration fx.aspects.absent [ "gone" ];
       };
     };
   };
@@ -130,7 +130,7 @@ let
       (fx.mkLayer {
         value = {
           opts = {
-            b = ref theme [ "x" ];
+            b = mkDeclaration theme [ "x" ];
           };
         };
       })
@@ -139,7 +139,7 @@ let
   };
 in
 {
-  flake.tests.ref-substitution = {
+  flake.tests.declaration-substitution = {
     # ref in a default resolves during the fold.
     test-default-ref-resolves = {
       expr = resDefaultRef.value.font;

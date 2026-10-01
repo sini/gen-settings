@@ -14,7 +14,7 @@ let
     resolveAll
     refGraph
     assertAcyclic
-    ref
+    mkDeclaration
     renderCycles
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
@@ -39,19 +39,19 @@ let
 
   # ── 2-cycle: theme.f -> terminal.g -> theme.f ──
   batch2 = [
-    (onlyDefault theme "f" (ref terminal [ "g" ]))
-    (onlyDefault terminal "g" (ref theme [ "f" ]))
+    (onlyDefault theme "f" (mkDeclaration terminal [ "g" ]))
+    (onlyDefault terminal "g" (mkDeclaration theme [ "f" ]))
   ];
   graph2 = refGraph batch2;
 
   # ── self-loop: theme.f -> theme.f ──
-  graphSelf = refGraph [ (onlyDefault theme "f" (ref theme [ "f" ])) ];
+  graphSelf = refGraph [ (onlyDefault theme "f" (mkDeclaration theme [ "f" ])) ];
 
   # ── 3-cycle: theme.f -> terminal.g -> firewall.h -> theme.f ──
   graph3 = refGraph [
-    (onlyDefault theme "f" (ref terminal [ "g" ]))
-    (onlyDefault terminal "g" (ref firewall [ "h" ]))
-    (onlyDefault firewall "h" (ref theme [ "f" ]))
+    (onlyDefault theme "f" (mkDeclaration terminal [ "g" ]))
+    (onlyDefault terminal "g" (mkDeclaration firewall [ "h" ]))
+    (onlyDefault firewall "h" (mkDeclaration theme [ "f" ]))
   ];
 
   # ── 3-cycle whose TRAVERSAL order and KEY order disagree: theme.f -> firewall.h ->
@@ -60,9 +60,9 @@ let
   # traversal direction — so this fixture is what discriminates a cycle PATH from mere cycle
   # MEMBERSHIP. Rendering a membership set with " -> " asserts edges the graph does not contain.
   graph3Discriminating = refGraph [
-    (onlyDefault theme "f" (ref firewall [ "h" ]))
-    (onlyDefault firewall "h" (ref terminal [ "g" ]))
-    (onlyDefault terminal "g" (ref theme [ "f" ]))
+    (onlyDefault theme "f" (mkDeclaration firewall [ "h" ]))
+    (onlyDefault firewall "h" (mkDeclaration terminal [ "g" ]))
+    (onlyDefault terminal "g" (mkDeclaration theme [ "f" ]))
   ];
 
   # ── figure-eight: ONE component holding TWO distinct simple cycles, theme.f -> terminal.g ->
@@ -71,11 +71,11 @@ let
   # is asserted below so the fixture cannot silently stop being a figure-eight.
   graphFigureEight = refGraph [
     (onlyDefault theme "f" [
-      (ref terminal [ "g" ])
-      (ref firewall [ "h" ])
+      (mkDeclaration terminal [ "g" ])
+      (mkDeclaration firewall [ "h" ])
     ])
-    (onlyDefault terminal "g" (ref theme [ "f" ]))
-    (onlyDefault firewall "h" (ref theme [ "f" ]))
+    (onlyDefault terminal "g" (mkDeclaration theme [ "f" ]))
+    (onlyDefault firewall "h" (mkDeclaration theme [ "f" ]))
   ];
   # Edge set as "A.f -> B.g" strings — the structural premise that this IS a figure-eight.
   edgeStrings =
@@ -88,10 +88,10 @@ let
   # the shape that reports more than one cycle, and therefore the only one that exercises
   # assertAcyclic's "; " join between cycles.
   graphDisjointCycles = refGraph [
-    (onlyDefault theme "f" (ref terminal [ "g" ]))
-    (onlyDefault terminal "g" (ref theme [ "f" ]))
-    (onlyDefault firewall "h" (ref nginx [ "k" ]))
-    (onlyDefault nginx "k" (ref firewall [ "h" ]))
+    (onlyDefault theme "f" (mkDeclaration terminal [ "g" ]))
+    (onlyDefault terminal "g" (mkDeclaration theme [ "f" ]))
+    (onlyDefault firewall "h" (mkDeclaration nginx [ "k" ]))
+    (onlyDefault nginx "k" (mkDeclaration firewall [ "h" ]))
   ];
 
   # ── permissive (field-granular, NO cycle): theme.f -> terminal.g, terminal.h -> theme.k ──
@@ -100,7 +100,7 @@ let
       aspect = theme;
       fields = {
         f = {
-          default = ref terminal [ "g" ];
+          default = mkDeclaration terminal [ "g" ];
         };
         k = {
           default = "K";
@@ -114,7 +114,7 @@ let
           default = "G";
         };
         h = {
-          default = ref theme [ "k" ];
+          default = mkDeclaration theme [ "k" ];
         };
       };
     }) [ ])
@@ -129,7 +129,7 @@ let
         aspect = theme;
         fields = {
           f = {
-            default = ref terminal [ "g" ];
+            default = mkDeclaration terminal [ "g" ];
           };
         };
       })
@@ -141,7 +141,7 @@ let
         })
       ]
     )
-    (onlyDefault terminal "g" (ref theme [ "f" ]))
+    (onlyDefault terminal "g" (mkDeclaration theme [ "f" ]))
   ];
   graphShadowedCycle = refGraph batchShadowedCycle;
 
@@ -187,7 +187,7 @@ let
   themeAlias = fx.mkAspect "theme-alias" theme.id_hash;
   graphAliasedTarget = refGraph [
     (onlyDefault theme "f" "F")
-    (onlyDefault terminal "g" (ref themeAlias [ "f" ]))
+    (onlyDefault terminal "g" (mkDeclaration themeAlias [ "f" ]))
   ];
 
   cyclicBatch = batch2;

@@ -155,7 +155,7 @@ let
     ) srcs;
 
   # The live counterpart to `forbidden`: the name this library reaches for where a tether would reach
-  # for nixpkgs. Every gen-settings source but ONE carries it, and that exclusion is `lib/ref.nix`,
+  # for nixpkgs. Every gen-settings source but ONE carries it, and that exclusion is `lib/declaration.nix`,
   # whose formal is `{ schema }` alone — it takes no prelude and so cannot name one. The exclusion
   # is what gives the assertion its teeth: the expected list is a PROPER SUBSET of the manifest, so a
   # read returning one fixed text for every file lands outside it either way — without the token the
@@ -190,11 +190,11 @@ in
   flake.tests.purity.test-scan-subject-is-the-library-tree = {
     expr = map (s: s.name) sources;
     expected = [
+      "lib/declaration.nix"
       "lib/default.nix"
       "lib/display.nix"
       "lib/graph.nix"
       "lib/inject.nix"
-      "lib/ref.nix"
       "lib/resolve.nix"
       "lib/schema.nix"
       "flake.nix"

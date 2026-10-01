@@ -2,7 +2,7 @@
 # structured provenance, and the graduated injection construct.
 #
 # Class B (nixpkgs-lib-free): builtins + gen-prelude, plus gen-algebra (the fold lives there),
-# gen-bind (injection), gen-graph (cycle detection lives there), gen-schema (the ref DATUM
+# gen-bind (injection), gen-graph (cycle detection lives there), gen-schema (the declaration DATUM
 # lives there, beside the reference type whose inhabitants refs are — so gen-schema is now an
 # IMPORTED input, not the interface-only dependency it once was; the id_hash law it defines is the
 # same law either way), gen-types (structural checking — what a well-formed schema field IS is
@@ -27,11 +27,11 @@
 let
   display = import ./display.nix { inherit prelude; };
   schemaModule = import ./schema.nix { inherit prelude types; };
-  ref = import ./ref.nix { inherit schema; };
+  declaration = import ./declaration.nix { inherit schema; };
   refGraphModule = import ./graph.nix {
     inherit
       prelude
-      ref
+      declaration
       display
       graph
       ;
@@ -40,7 +40,7 @@ let
     inherit
       prelude
       algebra
-      ref
+      declaration
       display
       ;
     graph = refGraphModule;
@@ -56,7 +56,7 @@ let
 in
 {
   inherit (schemaModule) mkSchema;
-  inherit (ref) ref isRef refsIn;
+  inherit (declaration) mkDeclaration isDeclaration declarationsIn;
   inherit (refGraphModule) refGraph assertAcyclic renderCycles;
   inherit (resolve) resolveOne resolveAll;
   inherit (inject) injectAspectSettings assembleHost;

@@ -39,7 +39,7 @@
 }:
 let
   inherit (genSettings)
-    ref
+    mkDeclaration
     mkSchema
     resolveOne
     resolveAll
@@ -67,7 +67,7 @@ let
       aspect = theme;
       fields = {
         f = {
-          default = ref absent [ "x" ];
+          default = mkDeclaration absent [ "x" ];
         };
       };
     }) [ ])
@@ -86,7 +86,7 @@ let
       aspect = theme;
       fields = {
         f = {
-          default = ref terminal [ comp ];
+          default = mkDeclaration terminal [ comp ];
         };
       };
     }) [ ])
@@ -188,7 +188,7 @@ let
       layers = [ ];
       resolveRef = _: "RESOLVED";
     };
-  refToTerminal = ref terminal [ "g" ];
+  refToTerminal = mkDeclaration terminal [ "g" ];
   oneFn = substSubject (_: refToTerminal);
   oneData = substSubject refToTerminal;
 
@@ -200,10 +200,10 @@ in
       # E6 fires at application time, before `schema.fieldRef` is reached, so the call itself is
       # the force point and no accessor is needed to reach the throw.
       test-e6-name-string-target-refuses-by-name = {
-        expr = ref "theme" [ "x" ];
+        expr = mkDeclaration "theme" [ "x" ];
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings: ref \\(E6\\): ref target must be an aspect registry entry carrying id_hash, never a name string$";
+          msg = "^gen-settings: mkDeclaration \\(E6\\): declaration target must be an aspect registry entry carrying id_hash, never a name string$";
         };
       };
 
@@ -213,7 +213,7 @@ in
       # control has to run in the same invocation as the thing it controls, so it stays on this
       # output — an `expected` cell among `expectedError` ones on purpose.
       test-e6-control-well-formed-target-answers = {
-        expr = (ref theme [ "x" ]).aspect.id_hash;
+        expr = (mkDeclaration theme [ "x" ]).aspect.id_hash;
         expected = theme.id_hash;
       };
     };
@@ -320,7 +320,7 @@ in
               aspect = theme;
               fields = {
                 f = {
-                  default = ref terminal [ "g" ];
+                  default = mkDeclaration terminal [ "g" ];
                 };
               };
             };
@@ -408,7 +408,7 @@ in
 
     # THE SUBSTITUTION REFUSES WHAT THE SCAN REFUSES — and says so at the position it refuses.
     #
-    # `refsIn` derives the dependency graph and its domain is data; `substDeep` produces the value.
+    # `declarationsIn` derives the dependency graph and its domain is data; `substDeep` produces the value.
     # `resolveOne` is the surface where the difference is observable: its VALUE half reaches
     # `substDeep` without passing the scan, so while the dispatch ended in a bare `else v` a
     # function-valued field came back AS THE LAMBDA on that half while the PROVENANCE half of the

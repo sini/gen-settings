@@ -55,7 +55,7 @@
 #   denotes its value rather than its retired implementation.
 {
   prelude,
-  ref,
+  declaration,
   display,
   graph,
 }:
@@ -68,7 +68,7 @@ let
     map
     concatStringsSep
     ;
-  inherit (ref) refsIn;
+  inherit (declaration) declarationsIn;
   inherit (display) renderAddress;
 
   # Internal graph key — id_hash + field. Identity law: keys are id_hash-based, names are
@@ -167,7 +167,7 @@ in
           }
           {
             items = map (c: c // { id = nodeKey c; }) allContribs;
-            scan = refsIn;
+            scan = declarationsIn;
             project = r: nodeKey (targetOf r);
           };
 

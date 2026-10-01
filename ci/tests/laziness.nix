@@ -16,7 +16,7 @@ let
     resolveOne
     resolveAll
     injectAspectSettings
-    ref
+    mkDeclaration
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   inherit (fx.aspects) theme terminal;
@@ -68,7 +68,7 @@ let
         default = "da";
       };
       b = {
-        default = ref terminal [ "x" ];
+        default = mkDeclaration terminal [ "x" ];
       };
     };
   };
@@ -127,7 +127,7 @@ let
           default = "da";
         };
         b = {
-          default = ref fx.aspects.absent [ "x" ]; # would be E4 if resolved
+          default = mkDeclaration fx.aspects.absent [ "x" ]; # would be E4 if resolved
         };
       };
     }) [ ])

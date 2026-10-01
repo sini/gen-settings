@@ -27,8 +27,8 @@ let
     resolveOne
     resolveAll
     refGraph
-    ref
-    refsIn
+    mkDeclaration
+    declarationsIn
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   inherit (fx.aspects) theme terminal;
@@ -42,7 +42,7 @@ let
       aspect = theme;
       fields = {
         f = {
-          default = ref fx.aspects.absent [ "x" ];
+          default = mkDeclaration fx.aspects.absent [ "x" ];
         };
       };
     }) [ ])
@@ -54,7 +54,7 @@ let
       aspect = theme;
       fields = {
         f = {
-          default = ref terminal [ "nope" ];
+          default = mkDeclaration terminal [ "nope" ];
         };
       };
     }) [ ])
@@ -257,11 +257,11 @@ in
 
     # E6 — ref rejects non-identity targets at application time.
     test-e6-string-target = {
-      expr = throws (ref "theme" [ "x" ]);
+      expr = throws (mkDeclaration "theme" [ "x" ]);
       expected = true;
     };
     test-e6-no-idhash = {
-      expr = throws (ref { name = "x"; } [ "f" ]);
+      expr = throws (mkDeclaration { name = "x"; } [ "f" ]);
       expected = true;
     };
 
@@ -273,7 +273,7 @@ in
 
     # L11 — identity in ≡ out: a ref carries the given entry (same id_hash), never a string.
     test-l11-ref-identity = {
-      expr = (lib.head (refsIn (ref theme [ "x" ]))).aspect.id_hash;
+      expr = (lib.head (declarationsIn (mkDeclaration theme [ "x" ]))).aspect.id_hash;
       expected = theme.id_hash;
     };
     # L11 — graph node aspects are the identical input entries (id_hash-equal).
