@@ -15,6 +15,7 @@
     gen-prelude.url = "github:sini/gen-prelude";
     gen-algebra.url = "github:sini/gen-algebra";
     gen-bind.url = "github:sini/gen-bind";
+    gen-bind.inputs.gen-algebra.follows = "gen-algebra";
     gen-graph.url = "github:sini/gen-graph";
     gen-schema.url = "github:sini/gen-schema";
     gen-types.url = "github:sini/gen-types";
