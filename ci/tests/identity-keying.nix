@@ -29,17 +29,11 @@ let
   throws = e: (builtins.tryEval (builtins.deepSeq e e)).success == false;
 
   fwSettings =
-    (resolveOne {
-      schema = mkSchema {
-        aspect = fx.aspects.firewall;
-        fields = {
-          "allowed-tcp" = {
-            default = [ 22 ];
-          };
-        };
+    (resolveOne { } (mkSchema fx.aspects.firewall {
+      "allowed-tcp" = {
+        default = [ 22 ];
       };
-      layers = [ ];
-    }).value;
+    }) [ ]).value;
 
   markContent =
     { settings, host, ... }:
@@ -55,8 +49,7 @@ let
 
   assembleFor =
     entity:
-    (assembleHost {
-      inherit entity;
+    (assembleHost { } {
       class = fx.classes.nixos;
       aspects = [
         {
@@ -68,7 +61,7 @@ let
           };
         }
       ];
-    }).firewall;
+    } entity).firewall;
 
   modAxon = assembleFor fx.entities.axon;
   modBlade = assembleFor fx.entities.blade;
@@ -105,20 +98,22 @@ let
   oldJoin = p: "${p.entity}/${p.aspect}";
   keyOfPair =
     p:
-    (assembleHost {
-      entity = {
+    (assembleHost { }
+      {
+        class = fx.classes.nixos;
+        aspects = [
+          {
+            aspect = fx.mkAspect "collide" p.aspect;
+            classContent = { };
+            settings = { };
+          }
+        ];
+      }
+      {
         name = "e";
         id_hash = p.entity;
-      };
-      class = fx.classes.nixos;
-      aspects = [
-        {
-          aspect = fx.mkAspect "collide" p.aspect;
-          classContent = { };
-          settings = { };
-        }
-      ];
-    }).collide.key;
+      }
+    ).collide.key;
 
   # A binding node minted through the one authority: two relatum-free nodes at pass 0, the binding
   # relating them at pass 1. Kind and labels are invented test data (ADR-0035). The identifier is
@@ -162,8 +157,7 @@ let
   bindingKey = es: (assembleFor (fill es)).key;
 
   # E8 — two aspects colliding on one settingsKey.
-  e8Call = assembleHost {
-    entity = fx.entities.axon;
+  e8Call = assembleHost { } {
     class = fx.classes.nixos;
     aspects = [
       {
@@ -179,7 +173,7 @@ let
         settingsKey = "shared";
       }
     ];
-  };
+  } fx.entities.axon;
 in
 {
   flake.tests.identity-keying = {
@@ -309,22 +303,26 @@ in
 
     # L14 — a class-name string (not a registry entry) is a definition-time error.
     test-class-string-error = {
-      expr = throws (assembleHost {
-        entity = fx.entities.axon;
-        class = "nixos";
-        aspects = [ ];
-      });
+      expr = throws (
+        assembleHost { } {
+          class = "nixos";
+          aspects = [ ];
+        } fx.entities.axon
+      );
       expected = true;
     };
     # L14 — an entity without id_hash is a definition-time error.
     test-entity-no-idhash-error = {
-      expr = throws (assembleHost {
-        entity = {
-          name = "x";
-        };
-        class = fx.classes.nixos;
-        aspects = [ ];
-      });
+      expr = throws (
+        assembleHost { }
+          {
+            class = fx.classes.nixos;
+            aspects = [ ];
+          }
+          {
+            name = "x";
+          }
+      );
       expected = true;
     };
 

@@ -39,9 +39,9 @@ Two entries, both yielding the same fifteen names (twelve live, three retired).
 
 **Schema** — `lib/schema.nix`
 
-| Export     | Signature                                                         |
-| ---------- | ----------------------------------------------------------------- |
-| `mkSchema` | `{ aspect, fields } -> { aspect; fields; strategies; defaults; }` |
+| Export     | Signature                                                       |
+| ---------- | --------------------------------------------------------------- |
+| `mkSchema` | `aspect -> fields -> { aspect; fields; strategies; defaults; }` |
 
 `fields` leaves are `{ default; merge ? "replace"; }`; `merge ∈ { replace, append, recursive }` (`lib/schema.nix:mergeStrategy`, a gen-types `enum`); field names are bare keys (`lib/schema.nix:bareKey`, a gen-types `refined` string).
 
@@ -66,23 +66,23 @@ Two entries, both yielding the same fifteen names (twelve live, three retired).
 
 **Resolution** — `lib/resolve.nix`
 
-| Export       | Signature                                                                               |
-| ------------ | --------------------------------------------------------------------------------------- |
-| `resolveOne` | `{ schema, layers, resolveRef ? <throws E4>, strict ? true } -> { value; provenance; }` |
-| `resolveAll` | `{ batch } -> { value; provenance; graph; }`                                            |
+| Export       | Signature                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `resolveOne` | `{ resolveRef ? <throws E4>, strict ? true } -> schema -> layers -> { value; provenance; }` |
+| `resolveAll` | `batch -> { value; provenance; graph; }`                                                    |
 
 **Injection** — `lib/inject.nix`
 
-| Export                 | Signature                                                                                                                                             |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `injectAspectSettings` | `{ aspect, classContent, settings, settingsKey ? aspect.name, bindings ? { }, contracts ? { }, provenance ? { } } -> { module; wrapped; signature; }` |
-| `assembleHost`         | `{ entity, class, aspects, bindings ? { } } -> { <settingsKey> = <identity-keyed module>; }`                                                          |
+| Export                 | Signature                                                                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `injectAspectSettings` | `{ settingsKey ? aspect.name, bindings ? { }, contracts ? { }, provenance ? { } } -> { aspect; settings; } -> classContent -> { module; wrapped; signature; }` |
+| `assembleHost`         | `{ bindings ? { } } -> { class; aspects; } -> entity -> { <settingsKey> = <identity-keyed module>; }`                                                          |
 
 **Display** — `lib/display.nix`
 
-| Export          | Signature                                         |
-| --------------- | ------------------------------------------------- |
-| `renderAddress` | `{ aspect, field ? null, path ? null } -> string` |
+| Export          | Signature                                           |
+| --------------- | --------------------------------------------------- |
+| `renderAddress` | `{ field ? null, path ? null } -> aspect -> string` |
 
 **Consumed shapes** (not exported)
 
@@ -113,16 +113,16 @@ Two entries, both yielding the same fifteen names (twelve live, three retired).
 
 | Task                                               | Reach for                                                                                   |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Declare an aspect's settings surface               | `mkSchema { aspect; fields; }`                                                              |
-| Resolve one aspect against a layer chain           | `resolveOne { schema; layers; }` — supply `resolveRef` if any ref is reachable              |
-| Resolve a batch with cross-aspect refs             | `resolveAll { batch; }` — ref routing is internal, keyed by `id_hash`                       |
+| Declare an aspect's settings surface               | `mkSchema aspect fields`                                                                    |
+| Resolve one aspect against a layer chain           | `resolveOne { } schema layers` — supply `{ resolveRef; }` if any ref is reachable           |
+| Resolve a batch with cross-aspect refs             | `resolveAll batch` — ref routing is internal, keyed by `id_hash`                            |
 | Point one setting at another aspect's setting      | `mkDeclaration <aspect-registry-entry> [ "field" … ]` inside a `default` or a layer `value` |
 | Ask what a value depends on without resolving      | `fieldDeclarationsIn v` (per-position hits) / `refGraph batch` (field-address edges)        |
-| Fail fast on a ref cycle                           | `assertAcyclic (refGraph batch)`, or force `(resolveAll { batch; }).value`                  |
+| Fail fast on a ref cycle                           | `assertAcyclic (refGraph batch)`, or force `(resolveAll batch).value`                       |
 | Ask where a resolved field came from               | `.provenance.<key>.<field>` — ordered chain, default entry first                            |
-| Hand resolved settings to parametric class content | `injectAspectSettings { aspect; classContent; settings; }` → `.module`                      |
-| Build an entity's whole per-aspect module set      | `assembleHost { entity; class; aspects; }`                                                  |
-| Render an address for an error message             | `renderAddress { aspect; field ? ; path ? ; }` — display only, never parsed back            |
+| Hand resolved settings to parametric class content | `injectAspectSettings { } { aspect; settings; } classContent` → `.module`                   |
+| Build an entity's whole per-aspect module set      | `assembleHost { } { class; aspects; } entity`                                               |
+| Render an address for an error message             | `renderAddress { field ? ; path ? ; } aspect` — display only, never parsed back             |
 | Accept undeclared contributions                    | `strict = false` — the field then passes through into the value                             |
 
 ## Measured traps

@@ -50,42 +50,53 @@ let
   # live path into it. This is a declaration comment, not a new consumer of
   # gen-settings' EXPERIMENTAL surface (ADR-0017).
   #
-  # injectAspectSettings { aspect; classContent; settings; settingsKey ?; bindings ?; contracts ?;
-  #   provenance ? } -> { module; wrapped; signature; }
+  # injectAspectSettings { settingsKey ?; bindings ?; contracts ?; provenance ?; } { aspect; settings; }
+  #   classContent -> { module; wrapped; signature; }
   # The injected settings binding is namespaced: settings = { ${settingsKey} = <resolved>; }, so
   # content reads `settings.<key>.<field>`. gen-bind's default `bindWins` shadows stray same-named
   # module args; lib/config/pkgs still flow from the module system (never injected).
   #
-  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
-  # moves the options off the record.
-  injectAspectSettings =
-    args:
+  # THREE STEPS (den-hoag-7gp66 P2, rules 2, 4 and the keyed-record ruling v1.3):
+  #   · the OPTIONS, one closed set first, a `prelude.door` refused by name and catchably at
+  #     `injectAspectSettings opts`'s own WHNF;
+  #   · `aspect` and `settings`, two configuration operands with no natural order between them (the
+  #     declaring entry and its resolved values, two attrsets a positional order would let a caller
+  #     swap silently), as ONE keyed record: open (R5), a missing field refused by name at the
+  #     record's application, and an option given on it instead of the options refused by name
+  #     (`optionsStep`, G10);
+  #   · the class content, the subject the injection wraps, positional and last.
+  injectAspectSettings = injectOptions (
+    o: injectRecord ({ aspect, settings, ... }: classContent: injectCore o aspect settings classContent)
+  );
+  injectOptions = prelude.door {
+    name = "gen-settings.injectAspectSettings";
+    optional = [
+      "settingsKey"
+      "bindings"
+      "contracts"
+      "provenance"
+    ];
+    next = injectRecordSpec;
+  };
+  injectRecordSpec = {
+    name = "gen-settings.injectAspectSettings";
+    required = [
+      "aspect"
+      "settings"
+    ];
+    open = true;
+    optionsStep = injectAspectSettings;
+  };
+  injectRecord = prelude.door injectRecordSpec;
+  # The unchecked core, which `assembleHost` calls once per aspect (spec §p2.3.2: internal callers
+  # of a door call its core, and no check sits in a per-element closure).
+  injectCore =
+    o: aspect: settings: classContent:
     let
-      checked =
-        prelude.checkOptions "gen-settings.injectAspectSettings"
-          [
-            "aspect"
-            "classContent"
-            "settings"
-            "settingsKey"
-            "bindings"
-            "contracts"
-            "provenance"
-          ]
-          (
-            prelude.checkRequired "gen-settings.injectAspectSettings" [
-              "aspect"
-              "classContent"
-              "settings"
-            ] args
-          );
-      aspect = checked.aspect;
-      classContent = checked.classContent;
-      settings = checked.settings;
-      settingsKey = checked.settingsKey or aspect.name;
-      bindings = checked.bindings or { };
-      contracts = checked.contracts or { };
-      provenance = checked.provenance or { };
+      settingsKey = o.settingsKey or aspect.name;
+      bindings = o.bindings or { };
+      contracts = o.contracts or { };
+      provenance = o.provenance or { };
       allBindings = bindings // {
         settings = {
           ${settingsKey} = settings;
@@ -96,15 +107,11 @@ let
         inherit contracts provenance;
       } classContent;
     in
-    # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, so its own
-    # WHNF forced none of `module`/`wrapped`/`signature` — checkOptions/checkRequired sat unread
-    # until a caller touched one of them, admitting a bad record at application. Same idiom
-    # `mkSchema`'s `seq dotCheck` and `assembleHost`'s `builtins.seq classOk (…)` already use.
-    builtins.seq checked {
+    {
       inherit (result) module wrapped signature;
     };
 
-  # assembleHost { entity; class; aspects; bindings ? } -> { <settingsKey> = <identity-keyed module>; }
+  # assembleHost { bindings ?; } { class; aspects; } entity -> { <settingsKey> = <identity-keyed module>; }
   #   entity — consuming entity (a registry entry) OR a minted binding node's identity (ADR-0016
   #            rulings 3–4), e.g. from gen-scope `mintStrata`; either way MUST carry id_hash.
   #   class  — class REGISTRY ENTRY; its `name` is the internal wrapIdentity key token.
@@ -113,30 +120,37 @@ let
   # dedup-collapsed; the same (class, entity, aspect) reaching one eval twice carries an equal key
   # and merges once. Duplicate settingsKey within one call is E8 (a module would otherwise be
   # silently dropped by attrset collision — the failure identity keying exists to prevent).
-  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
-  # moves the options off the record.
-  assembleHost =
-    args:
+  #
+  # THREE STEPS (den-hoag-7gp66 P2; K1, 2026-09-27, names `entity` the subject): the one option,
+  # `bindings`, leaves for a closed options set (a `prelude.door`); `class` and `aspects`, two
+  # configuration operands with no natural order, are ONE keyed open record (the v1.3 ruling), its
+  # missing field refused by name at its application and `bindings` given on it refused by name
+  # (`optionsStep`); the entity is positional and last, so `assembleHost { } { class; aspects; }` is an
+  # assembler mapped over entities.
+  assembleHost = assembleOptions (
+    o:
+    assembleRecord (
+      { class, aspects, ... }: entity: assembleCore (o.bindings or { }) class aspects entity
+    )
+  );
+  assembleOptions = prelude.door {
+    name = "gen-settings.assembleHost";
+    optional = [ "bindings" ];
+    next = assembleRecordSpec;
+  };
+  assembleRecordSpec = {
+    name = "gen-settings.assembleHost";
+    required = [
+      "class"
+      "aspects"
+    ];
+    open = true;
+    optionsStep = assembleHost;
+  };
+  assembleRecord = prelude.door assembleRecordSpec;
+  assembleCore =
+    bindings: class: aspects: entity:
     let
-      checked =
-        prelude.checkOptions "gen-settings.assembleHost"
-          [
-            "entity"
-            "class"
-            "aspects"
-            "bindings"
-          ]
-          (
-            prelude.checkRequired "gen-settings.assembleHost" [
-              "entity"
-              "class"
-              "aspects"
-            ] args
-          );
-      entity = checked.entity;
-      class = checked.class;
-      aspects = checked.aspects;
-      bindings = checked.bindings or { };
       classOk =
         if !(isAttrs class && class ? name) then
           throw "gen-settings: assembleHost (L14): `class` must be a class registry entry (carrying a name), never a class-name string"
@@ -148,7 +162,19 @@ let
         else
           entity;
 
-      keyed = map (a: a // { _key = a.settingsKey or a.aspect.name; }) aspects;
+      # Each element is a data record (R5: open, its missing field refused by name), checked once
+      # here, where the P1 door it was handed to used to check it.
+      keyed = map (
+        a:
+        let
+          e = prelude.checkRequired "gen-settings.assembleHost" [
+            "aspect"
+            "classContent"
+            "settings"
+          ] a;
+        in
+        e // { _key = e.settingsKey or e.aspect.name; }
+      ) aspects;
       counts = foldl' (acc: a: acc // { ${a._key} = (acc.${a._key} or 0) + 1; }) { } keyed;
       dupKeys = filter (k: counts.${k} > 1) (attrNames counts);
       e8 =
@@ -165,11 +191,10 @@ let
       mkOne =
         a:
         let
-          inj = injectAspectSettings {
-            inherit (a) aspect classContent settings;
+          inj = injectCore {
             settingsKey = a._key;
             bindings = bindings // (a.bindings or { });
-          };
+          } a.aspect a.settings a.classContent;
           # The relation kind is `attaches`; its relata are labelled `aspect` and `entity`. The label
           # list carries no ordering obligation — the preimage is an attrset, whose keys render
           # sorted — so it is spelled in whichever order reads best.

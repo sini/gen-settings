@@ -10,16 +10,13 @@ let
   inherit (genSettings) mkSchema resolveOne;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
 
-  schema = mkSchema {
-    aspect = fx.aspects.firewall;
-    fields = {
-      h = {
-        default = "d";
-      }; # replace
-      p = {
-        default = [ ];
-        merge = "append";
-      };
+  schema = mkSchema fx.aspects.firewall {
+    h = {
+      default = "d";
+    }; # replace
+    p = {
+      default = [ ];
+      merge = "append";
     };
   };
 
@@ -38,27 +35,18 @@ let
     };
   };
 
-  fwd = resolveOne {
-    inherit schema;
-    layers = [
-      la
-      lb
-    ];
-  };
-  rev = resolveOne {
-    inherit schema;
-    layers = [
-      lb
-      la
-    ];
-  };
-  dup = resolveOne {
-    inherit schema;
-    layers = [
-      la
-      la
-    ];
-  };
+  fwd = resolveOne { } schema [
+    la
+    lb
+  ];
+  rev = resolveOne { } schema [
+    lb
+    la
+  ];
+  dup = resolveOne { } schema [
+    la
+    la
+  ];
 in
 {
   flake.tests.no-reordering = {

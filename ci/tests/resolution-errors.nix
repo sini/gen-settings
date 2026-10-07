@@ -38,32 +38,23 @@ let
 
   # E4 — target aspect absent from the batch.
   batchE4 = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = mkDeclaration fx.aspects.absent [ "x" ];
-        };
+    (member (mkSchema theme {
+      f = {
+        default = mkDeclaration fx.aspects.absent [ "x" ];
       };
     }) [ ])
   ];
 
   # E5 — target present, path component absent in its resolved value.
   batchE5 = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = mkDeclaration terminal [ "nope" ];
-        };
+    (member (mkSchema theme {
+      f = {
+        default = mkDeclaration terminal [ "nope" ];
       };
     }) [ ])
-    (member (mkSchema {
-      aspect = terminal;
-      fields = {
-        g = {
-          default = "G";
-        };
+    (member (mkSchema terminal {
+      g = {
+        default = "G";
       };
     }) [ ])
   ];
@@ -71,12 +62,9 @@ let
   # E7 — duplicate batch key.
   batchE7 = [
     (
-      member (mkSchema {
-        aspect = theme;
-        fields = {
-          f = {
-            default = 1;
-          };
+      member (mkSchema theme {
+        f = {
+          default = 1;
         };
       }) [ ]
       // {
@@ -84,12 +72,9 @@ let
       }
     )
     (
-      member (mkSchema {
-        aspect = terminal;
-        fields = {
-          g = {
-            default = 2;
-          };
+      member (mkSchema terminal {
+        g = {
+          default = 2;
         };
       }) [ ]
       // {
@@ -99,120 +84,104 @@ let
   ];
 
   # E2 — strict-mode undeclared contribution (non-throwing value: attr-name-level detection).
-  resE2 = resolveOne {
-    schema = mkSchema {
-      aspect = theme;
-      fields = {
+  resE2 =
+    resolveOne { strict = true; }
+      (mkSchema theme {
         f = {
           default = "d";
         };
-      };
-    };
-    strict = true;
-    layers = [
-      (fx.mkLayer {
-        value = {
-          extra = "u";
-        };
       })
-    ];
-  };
+      [
+        (fx.mkLayer {
+          value = {
+            extra = "u";
+          };
+        })
+      ];
 
   # E2 — same undeclared contribution, but its VALUE is a throw. The strict scan is attr-name-level
   # (resolve.nix reads `attrNames l.value`, the key names, never the values), so E2 fires on the
   # undeclared key `extra` without ever forcing its (throwing) value — the throwing value does not
   # preempt E2. Were the scan value-level, forcing the result would surface `boom` instead.
-  resE2Throwing = resolveOne {
-    schema = mkSchema {
-      aspect = theme;
-      fields = {
+  resE2Throwing =
+    resolveOne { strict = true; }
+      (mkSchema theme {
         f = {
           default = "d";
         };
-      };
-    };
-    strict = true;
-    layers = [
-      (fx.mkLayer {
-        value = {
-          extra = throw "boom";
-        };
       })
-    ];
-  };
+      [
+        (fx.mkLayer {
+          value = {
+            extra = throw "boom";
+          };
+        })
+      ];
 in
 {
   flake.tests.resolution-errors = {
     # E1 — schema shape violations.
     test-e1-dotted-key = {
-      expr = throws (mkSchema {
-        aspect = theme;
-        fields = {
+      expr = throws (
+        mkSchema theme {
           "a.b" = {
             default = 1;
           };
-        };
-      });
+        }
+      );
       expected = true;
     };
     test-e1-missing-default = {
-      expr = throws (mkSchema {
-        aspect = theme;
-        fields = {
+      expr = throws (
+        mkSchema theme {
           x = {
             merge = "replace";
           };
-        };
-      });
+        }
+      );
       expected = true;
     };
     test-e1-bad-merge = {
-      expr = throws (mkSchema {
-        aspect = theme;
-        fields = {
+      expr = throws (
+        mkSchema theme {
           x = {
             default = 1;
             merge = "bogus";
           };
-        };
-      });
+        }
+      );
       expected = true;
     };
     # A dot anywhere in the name is E1, not only between two segments — the bare-key predicate is a
     # containment test over the whole name, so its boundaries are pinned at both ends.
     test-e1-dotted-key-leading = {
-      expr = throws (mkSchema {
-        aspect = theme;
-        fields = {
+      expr = throws (
+        mkSchema theme {
           ".b" = {
             default = 1;
           };
-        };
-      });
+        }
+      );
       expected = true;
     };
     test-e1-dotted-key-trailing = {
-      expr = throws (mkSchema {
-        aspect = theme;
-        fields = {
+      expr = throws (
+        mkSchema theme {
           "a." = {
             default = 1;
           };
-        };
-      });
+        }
+      );
       expected = true;
     };
     # LIVE CONTROL for every E1 arm above: a well-formed field is ACCEPTED. Without it the three
     # rejections are consistent with a predicate that refuses everything.
     test-e1-well-formed-field-accepted = {
       expr =
-        (mkSchema {
-          aspect = theme;
-          fields = {
-            a-b = {
-              default = 1;
-              merge = "append";
-            };
+        (mkSchema theme {
+          a-b = {
+            default = 1;
+            merge = "append";
           };
         }).strategies;
       expected = {
@@ -222,15 +191,14 @@ in
     # `semilattice-set` is E1 here even though the underlying fold implements it: the schema's
     # strategy set is this library's declared domain, not the fold's capability.
     test-e1-semilattice-set-rejected = {
-      expr = throws (mkSchema {
-        aspect = theme;
-        fields = {
+      expr = throws (
+        mkSchema theme {
           x = {
             default = [ ];
             merge = "semilattice-set";
           };
-        };
-      });
+        }
+      );
       expected = true;
     };
 
@@ -247,11 +215,11 @@ in
 
     # E4 / E5 — resolution addressing (both endpoints; fires when the field is forced).
     test-e4-target-absent = {
-      expr = throws (resolveAll { batch = batchE4; }).value;
+      expr = throws (resolveAll batchE4).value;
       expected = true;
     };
     test-e5-bad-path = {
-      expr = throws (resolveAll { batch = batchE5; }).value;
+      expr = throws (resolveAll batchE5).value;
       expected = true;
     };
 
@@ -267,7 +235,7 @@ in
 
     # E7 — duplicate batch key.
     test-e7-duplicate-key = {
-      expr = throws (resolveAll { batch = batchE7; }).value;
+      expr = throws (resolveAll batchE7).value;
       expected = true;
     };
 

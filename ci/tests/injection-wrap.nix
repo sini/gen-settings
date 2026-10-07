@@ -15,31 +15,25 @@ let
     ;
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
 
-  fwSchema = mkSchema {
-    aspect = fx.aspects.firewall;
-    fields = {
-      "allowed-tcp" = {
-        default = [ 22 ];
-        merge = "append";
-      };
+  fwSchema = mkSchema fx.aspects.firewall {
+    "allowed-tcp" = {
+      default = [ 22 ];
+      merge = "append";
     };
   };
   fwSettings =
-    (resolveOne {
-      schema = fwSchema;
-      layers = [
-        (fx.mkLayer {
-          value = {
-            "allowed-tcp" = [ 80 ];
-          };
-        })
-        (fx.mkLayer {
-          value = {
-            "allowed-tcp" = [ 443 ];
-          };
-        })
-      ];
-    }).value;
+    (resolveOne { } fwSchema [
+      (fx.mkLayer {
+        value = {
+          "allowed-tcp" = [ 80 ];
+        };
+      })
+      (fx.mkLayer {
+        value = {
+          "allowed-tcp" = [ 443 ];
+        };
+      })
+    ]).value;
   expectedPorts = [
     22
     80
@@ -68,29 +62,29 @@ let
       ];
     }).config.networking.firewall.allowedTCPPorts;
 
-  injFn = injectAspectSettings {
+  injFn = injectAspectSettings { } {
     aspect = fx.aspects.firewall;
-    classContent = fwFn;
     settings = fwSettings;
-  };
-  injImports = injectAspectSettings {
-    aspect = fx.aspects.firewall;
-    classContent = {
-      imports = [ fwFn ];
-    };
-    settings = fwSettings;
-  };
+  } fwFn;
+  injImports =
+    injectAspectSettings { }
+      {
+        aspect = fx.aspects.firewall;
+        settings = fwSettings;
+      }
+      {
+        imports = [ fwFn ];
+      };
   plainContent = {
     config.networking.firewall.allowedTCPPorts = [
       1
       2
     ];
   };
-  injPlain = injectAspectSettings {
+  injPlain = injectAspectSettings { } {
     aspect = fx.aspects.firewall;
-    classContent = plainContent;
     settings = fwSettings;
-  };
+  } plainContent;
 
   # mkDefault survival: a stripped default would conflict with the override; mkDefault ranks below it.
   valOpts = {
@@ -104,11 +98,10 @@ let
     {
       config.val = lib.mkDefault 5;
     };
-  injMkDef = injectAspectSettings {
+  injMkDef = injectAspectSettings { } {
     aspect = fx.aspects.firewall;
-    classContent = mkDefFn;
     settings = fwSettings;
-  };
+  } mkDefFn;
   valEval =
     (lib.evalModules {
       modules = [
@@ -130,14 +123,18 @@ let
     {
       config.hostName = host.name;
     };
-  injBindWins = injectAspectSettings {
-    aspect = fx.aspects.firewall;
-    classContent = bindWinsFn;
-    settings = fwSettings;
-    bindings = {
-      host = fx.entities.axon;
-    };
-  };
+  injBindWins =
+    injectAspectSettings
+      {
+        bindings = {
+          host = fx.entities.axon;
+        };
+      }
+      {
+        aspect = fx.aspects.firewall;
+        settings = fwSettings;
+      }
+      bindWinsFn;
   hostEval =
     (lib.evalModules {
       modules = [
@@ -147,46 +144,43 @@ let
     }).config.hostName;
 
   # Second aspect (nginx-style): scalar + recursive, proving non-specificity to one aspect.
-  nginxSchema = mkSchema {
-    aspect = fx.aspects.nginx;
-    fields = {
-      worker = {
-        default = 1;
+  nginxSchema = mkSchema fx.aspects.nginx {
+    worker = {
+      default = 1;
+    };
+    extra = {
+      default = {
+        gzip = true;
       };
-      extra = {
-        default = {
-          gzip = true;
-        };
-        merge = "recursive";
-      };
+      merge = "recursive";
     };
   };
   nginxSettings =
-    (resolveOne {
-      schema = nginxSchema;
-      layers = [
-        (fx.mkLayer {
-          value = {
-            worker = 4;
-          };
-        })
-      ];
-    }).value;
+    (resolveOne { } nginxSchema [
+      (fx.mkLayer {
+        value = {
+          worker = 4;
+        };
+      })
+    ]).value;
   nginxOpts = {
     options.workers = lib.mkOption {
       type = lib.types.int;
       default = 0;
     };
   };
-  injNginx = injectAspectSettings {
-    aspect = fx.aspects.nginx;
-    classContent =
-      { settings, ... }:
+  injNginx =
+    injectAspectSettings { }
       {
-        config.workers = settings.nginx.worker;
-      };
-    settings = nginxSettings;
-  };
+        aspect = fx.aspects.nginx;
+        settings = nginxSettings;
+      }
+      (
+        { settings, ... }:
+        {
+          config.workers = settings.nginx.worker;
+        }
+      );
   nginxEval =
     (lib.evalModules {
       modules = [

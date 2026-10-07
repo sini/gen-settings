@@ -26,16 +26,13 @@ let
   };
 
   # ── replace + append + recursive chains ──
-  schema = mkSchema {
-    aspect = fx.aspects.firewall;
-    fields = {
-      hostname = {
-        default = "unset";
-      }; # replace
-      "allowed-tcp" = {
-        default = [ 22 ];
-        merge = "append";
-      };
+  schema = mkSchema fx.aspects.firewall {
+    hostname = {
+      default = "unset";
+    }; # replace
+    "allowed-tcp" = {
+      default = [ 22 ];
+      merge = "append";
     };
   };
   layers = [
@@ -55,58 +52,44 @@ let
       };
     })
   ];
-  res = resolveOne { inherit schema layers; };
+  res = resolveOne { } schema layers;
 
   # ── refs hop records with `at` subpaths ──
-  schemaRefs = mkSchema {
-    aspect = fx.aspects.terminal;
-    fields = {
-      cfg = {
-        default = { };
-        merge = "recursive";
-      };
+  schemaRefs = mkSchema fx.aspects.terminal {
+    cfg = {
+      default = { };
+      merge = "recursive";
     };
   };
-  resRefs = resolveOne {
-    schema = schemaRefs;
-    layers = [
-      (fx.mkLayer {
-        rendered = "host";
-        value = {
-          cfg = {
-            k = mkDeclaration theme [
-              "font"
-              "mono"
-            ];
-          };
+  resRefs = resolveOne { inherit resolveRef; } schemaRefs [
+    (fx.mkLayer {
+      rendered = "host";
+      value = {
+        cfg = {
+          k = mkDeclaration theme [
+            "font"
+            "mono"
+          ];
         };
-      })
-    ];
-    inherit resolveRef;
-  };
+      };
+    })
+  ];
 
   # ── non-strict passthrough ──
-  schemaPass = mkSchema {
-    aspect = fx.aspects.nginx;
-    fields = {
-      declared = {
-        default = "d";
-      };
+  schemaPass = mkSchema fx.aspects.nginx {
+    declared = {
+      default = "d";
     };
   };
-  resPass = resolveOne {
-    schema = schemaPass;
-    strict = false;
-    layers = [
-      (fx.mkLayer {
-        rendered = "host";
-        value = {
-          declared = "x";
-          undeclared = "u";
-        };
-      })
-    ];
-  };
+  resPass = resolveOne { strict = false; } schemaPass [
+    (fx.mkLayer {
+      rendered = "host";
+      value = {
+        declared = "x";
+        undeclared = "u";
+      };
+    })
+  ];
 
   # ── shadowed-ref provenance laziness (L15.4) ──
   # These three pin the property through THIS composition — a ref whose target aspect is absent
@@ -114,26 +97,19 @@ let
   # entry rather than an absent aspect (`test-entry-transform-*`, ci/tests/rec-fold-layers-traced.nix).
   # Both are needed: the fold guarantees non-interference, and these show the ref refinement
   # gen-settings hands it is lazy in the part that follows the ref.
-  schemaShadow = mkSchema {
-    aspect = fx.aspects.terminal;
-    fields = {
-      font = {
-        default = mkDeclaration fx.aspects.absent [ "gone" ];
-      };
+  schemaShadow = mkSchema fx.aspects.terminal {
+    font = {
+      default = mkDeclaration fx.aspects.absent [ "gone" ];
     };
   };
-  resShadow = resolveOne {
-    schema = schemaShadow;
-    layers = [
-      (fx.mkLayer {
-        rendered = "host";
-        value = {
-          font = "concrete";
-        };
-      })
-    ];
-    resolveRef = sentinelRef;
-  };
+  resShadow = resolveOne { resolveRef = sentinelRef; } schemaShadow [
+    (fx.mkLayer {
+      rendered = "host";
+      value = {
+        font = "concrete";
+      };
+    })
+  ];
   shadowChain = resShadow.provenance.font;
 in
 {

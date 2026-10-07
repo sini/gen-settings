@@ -26,84 +26,64 @@ let
   # Typing `default` as `any` is what keeps it unforced; typing it as anything checking structure
   # would force it. Reading the normalized STRATEGY runs the whole field check, so a strategy that
   # comes back while the default still throws is the discriminating observation.
-  schemaThrowingDefault = mkSchema {
-    aspect = theme;
-    fields = {
-      f = {
-        default = throw "schema default forced at construction";
-      };
+  schemaThrowingDefault = mkSchema theme {
+    f = {
+      default = throw "schema default forced at construction";
     };
   };
 
   # ── L15.2: an unread field's throwing contribution is never forced ──
-  schema2 = mkSchema {
-    aspect = theme;
-    fields = {
-      a = {
-        default = "da";
-      };
-      b = {
-        default = "db";
-      };
+  schema2 = mkSchema theme {
+    a = {
+      default = "da";
+    };
+    b = {
+      default = "db";
     };
   };
-  res2 = resolveOne {
-    schema = schema2;
-    layers = [
-      (fx.mkLayer {
-        value = {
-          a = "va";
-          b = throw "b forced";
-        };
-      })
-    ];
-  };
+  res2 = resolveOne { } schema2 [
+    (fx.mkLayer {
+      value = {
+        a = "va";
+        b = throw "b forced";
+      };
+    })
+  ];
 
   # ── L15.2: a provenance-only consumer of `a` doesn't force `b`'s ref substitution ──
   sentinelRef = { aspect, path }: throw "resolveRef called for an unread field";
-  schemaRefUnread = mkSchema {
-    aspect = theme;
-    fields = {
-      a = {
-        default = "da";
-      };
-      b = {
-        default = mkDeclaration terminal [ "x" ];
-      };
+  schemaRefUnread = mkSchema theme {
+    a = {
+      default = "da";
+    };
+    b = {
+      default = mkDeclaration terminal [ "x" ];
     };
   };
-  resRefUnread = resolveOne {
-    schema = schemaRefUnread;
-    layers = [ ];
-    resolveRef = sentinelRef;
-  };
+  resRefUnread = resolveOne { resolveRef = sentinelRef; } schemaRefUnread [ ];
 
   # ── L15.1: injection forces nothing in settings ──
-  injLazy = injectAspectSettings {
+  injLazy = injectAspectSettings { } {
     aspect = theme;
-    classContent = { settings, ... }: { config.x = 1; };
     settings = {
       theme = {
         boom = throw "settings forced at wrap time";
       };
     };
-  };
+  } ({ settings, ... }: { config.x = 1; });
 
   # ── L15.3: resolveAll — an unread field's FOLD is never computed ──
   # `b` is append-strategy with a WHNF-fine but un-append-able contribution (an int): the graph scan
   # forces it to WHNF (fine), but folding `[] ++ 42` throws only if `b` is read. Reading `a` doesn't.
   batchUnfolded = [
     (member
-      (mkSchema {
-        aspect = theme;
-        fields = {
-          a = {
-            default = "da";
-          };
-          b = {
-            default = [ ];
-            merge = "append";
-          };
+      (mkSchema theme {
+        a = {
+          default = "da";
+        };
+        b = {
+          default = [ ];
+          merge = "append";
         };
       })
       [
@@ -116,23 +96,20 @@ let
       ]
     )
   ];
-  resUnfolded = resolveAll { batch = batchUnfolded; };
+  resUnfolded = resolveAll batchUnfolded;
 
   # ── L15.3: resolveRef never called for a ref in an unread field ──
   batchRefUnread = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        a = {
-          default = "da";
-        };
-        b = {
-          default = mkDeclaration fx.aspects.absent [ "x" ]; # would be E4 if resolved
-        };
+    (member (mkSchema theme {
+      a = {
+        default = "da";
+      };
+      b = {
+        default = mkDeclaration fx.aspects.absent [ "x" ]; # would be E4 if resolved
       };
     }) [ ])
   ];
-  resBatchRefUnread = resolveAll { batch = batchRefUnread; };
+  resBatchRefUnread = resolveAll batchRefUnread;
 in
 {
   flake.tests.laziness = {

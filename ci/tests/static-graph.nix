@@ -28,12 +28,9 @@ let
   member = schema: layers: { inherit schema layers; };
   onlyDefault =
     aspect: field: value:
-    member (mkSchema {
-      inherit aspect;
-      fields = {
-        ${field} = {
-          default = value;
-        };
+    member (mkSchema aspect {
+      ${field} = {
+        default = value;
       };
     }) [ ];
 
@@ -96,41 +93,32 @@ let
 
   # ── permissive (field-granular, NO cycle): theme.f -> terminal.g, terminal.h -> theme.k ──
   batchPermissive = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = mkDeclaration terminal [ "g" ];
-        };
-        k = {
-          default = "K";
-        };
+    (member (mkSchema theme {
+      f = {
+        default = mkDeclaration terminal [ "g" ];
+      };
+      k = {
+        default = "K";
       };
     }) [ ])
-    (member (mkSchema {
-      aspect = terminal;
-      fields = {
-        g = {
-          default = "G";
-        };
-        h = {
-          default = mkDeclaration theme [ "k" ];
-        };
+    (member (mkSchema terminal {
+      g = {
+        default = "G";
+      };
+      h = {
+        default = mkDeclaration theme [ "k" ];
       };
     }) [ ])
   ];
   graphPermissive = refGraph batchPermissive;
-  resPermissive = resolveAll { batch = batchPermissive; };
+  resPermissive = resolveAll batchPermissive;
 
   # ── L17a: cycle whose theme.f ref lives in a DEFAULT shadowed by a replace layer ──
   batchShadowedCycle = [
     (member
-      (mkSchema {
-        aspect = theme;
-        fields = {
-          f = {
-            default = mkDeclaration terminal [ "g" ];
-          };
+      (mkSchema theme {
+        f = {
+          default = mkDeclaration terminal [ "g" ];
         };
       })
       [
@@ -148,12 +136,9 @@ let
   # ── L17b: a throwing scalar in a shadowed contribution of an unread-under-replace field ──
   batchThrow = [
     (member
-      (mkSchema {
-        aspect = theme;
-        fields = {
-          x = {
-            default = "d";
-          };
+      (mkSchema theme {
+        x = {
+          default = "d";
         };
       })
       [
@@ -191,7 +176,7 @@ let
   ];
 
   cyclicBatch = batch2;
-  forced = builtins.tryEval (builtins.deepSeq (resolveAll { batch = cyclicBatch; }).value true);
+  forced = builtins.tryEval (builtins.deepSeq (resolveAll cyclicBatch).value true);
 in
 {
   flake.tests.static-graph = {
@@ -325,15 +310,13 @@ in
       expected = 1;
     };
     test-conservative-shadowed-cycle-throws = {
-      expr =
-        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchShadowedCycle; }).value true))
-        .success;
+      expr = (builtins.tryEval (builtins.deepSeq (resolveAll batchShadowedCycle).value true)).success;
       expected = false;
     };
 
     # L8 — an UNforced resolveAll result never throws, even for a cyclic batch.
     test-unforced-never-throws = {
-      expr = (builtins.tryEval (resolveAll { batch = cyclicBatch; } ? value)).value;
+      expr = (builtins.tryEval (resolveAll cyclicBatch ? value)).value;
       expected = true;
     };
     # L8 — forcing the result triggers the cycle check.
@@ -344,8 +327,7 @@ in
 
     # L17b — a throwing scalar in any (shadowed, unread-under-replace) contribution throws at force.
     test-structural-strictness-throw = {
-      expr =
-        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = batchThrow; }).value true)).success;
+      expr = (builtins.tryEval (builtins.deepSeq (resolveAll batchThrow).value true)).success;
       expected = false;
     };
 
@@ -354,8 +336,7 @@ in
     # on this cyclic batch (test-forced-throws above) while `.graph` deepSeq'd clean, because
     # resolveAll returned the unchecked `theGraph` rather than `checkedGraph` under this accessor.
     test-graph-accessor-throws-on-cycle = {
-      expr =
-        (builtins.tryEval (builtins.deepSeq (resolveAll { batch = cyclicBatch; }).graph true)).success;
+      expr = (builtins.tryEval (builtins.deepSeq (resolveAll cyclicBatch).graph true)).success;
       expected = false;
     };
     # Control: on an ACYCLIC batch, assertAcyclic is identity (test-assertAcyclic-identity above),
@@ -363,7 +344,7 @@ in
     # through the check — this cell would hold unchanged whichever of the two the accessor returns,
     # which is what proves the fix above changes validity-gating and nothing else.
     test-control-graph-accessor-unchanged-on-acyclic-batch = {
-      expr = (resolveAll { batch = batchPermissive; }).graph == graphPermissive;
+      expr = (resolveAll batchPermissive).graph == graphPermissive;
       expected = true;
     };
   };

@@ -40,12 +40,9 @@ let
   member = schema: layers: { inherit schema layers; };
   onlyDefault =
     aspect: field: value:
-    member (mkSchema {
-      inherit aspect;
-      fields = {
-        ${field} = {
-          default = value;
-        };
+    member (mkSchema aspect {
+      ${field} = {
+        default = value;
       };
     }) [ ];
 
@@ -77,18 +74,11 @@ let
   # or inside a function body in it.
   substSubject =
     value:
-    resolveOne {
-      schema = mkSchema {
-        aspect = theme;
-        fields = {
-          f = {
-            default = value;
-          };
-        };
+    resolveOne { resolveRef = _: "RESOLVED"; } (mkSchema theme {
+      f = {
+        default = value;
       };
-      layers = [ ];
-      resolveRef = _: "RESOLVED";
-    };
+    }) [ ];
   oneFn = substSubject (_: r);
   oneData = substSubject r;
   bothHalves = one: [
@@ -185,22 +175,18 @@ in
     test-resolveAll-refuses-the-function-before-any-value = {
       expr =
         throws
-          (resolveAll {
-            batch = [
-              (onlyDefault theme "f" (_: r))
-              (onlyDefault terminal "g" "G")
-            ];
-          }).value;
+          (resolveAll [
+            (onlyDefault theme "f" (_: r))
+            (onlyDefault terminal "g" "G")
+          ]).value;
       expected = true;
     };
     test-control-resolveAll-resolves-the-ref-in-data = {
       expr =
-        (resolveAll {
-          batch = [
-            (onlyDefault theme "f" r)
-            (onlyDefault terminal "g" "G")
-          ];
-        }).value.theme.f;
+        (resolveAll [
+          (onlyDefault theme "f" r)
+          (onlyDefault terminal "g" "G")
+        ]).value.theme.f;
       expected = "G";
     };
   };

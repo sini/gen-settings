@@ -54,21 +54,17 @@ let
   };
   inherit (genSettings) mkSchema resolveOne;
 
-  schema = mkSchema {
-    aspect = config.aspects.firewall;      # a registry entry (carries id_hash)
-    fields = {
-      "allowed-tcp" = { default = [ 22 ]; merge = "append"; };
-      hostname = { default = "unset"; };   # replace (implicit)
-    };
+  # the declaring aspect (a registry entry carrying id_hash), then its fields
+  schema = mkSchema config.aspects.firewall {
+    "allowed-tcp" = { default = [ 22 ]; merge = "append"; };
+    hostname = { default = "unset"; };   # replace (implicit)
   };
 
-  resolved = resolveOne {
-    inherit schema;
-    layers = [
-      { scope = { env = config.envs.prod; };  rendered = "prod"; via = null; value = { "allowed-tcp" = [ 80 ]; }; }
-      { scope = { host = den.hosts.axon-01; }; rendered = "axon-01"; via = null; value = { "allowed-tcp" = [ 443 ]; hostname = "axon-01"; }; }
-    ];
-  };
+  # options first (`{ resolveRef; strict; }`, here none), then the schema, then the layers
+  resolved = resolveOne { } schema [
+    { scope = { env = config.envs.prod; };  rendered = "prod"; via = null; value = { "allowed-tcp" = [ 80 ]; }; }
+    { scope = { host = den.hosts.axon-01; }; rendered = "axon-01"; via = null; value = { "allowed-tcp" = [ 443 ]; hostname = "axon-01"; }; }
+  ];
 in
 resolved.value    # => { "allowed-tcp" = [ 22 80 443 ]; hostname = "axon-01"; }
 ```
@@ -77,7 +73,7 @@ resolved.value    # => { "allowed-tcp" = [ 22 80 443 ]; hostname = "axon-01"; }
 
 ### Schemas
 
-`mkSchema { aspect; fields; }` normalizes an aspect's leaves into `{ aspect; fields; strategies; defaults; }` — plain data, always introspectable. Field names are **bare keys** (`allowed-tcp`, never `firewall.allowed-tcp`); `default` is mandatory on every leaf; `merge ∈ { replace, append, recursive }`. Those three obligations are stated as gen-types checkers and the value of `default` is typed `any`, so verifying a field never forces what it holds. Shape violations are the definition-time error E1, which is gen-settings' own diagnostic over gen-types' predicate.
+`mkSchema aspect fields` normalizes an aspect's leaves into `{ aspect; fields; strategies; defaults; }` — plain data, always introspectable. Field names are **bare keys** (`allowed-tcp`, never `firewall.allowed-tcp`); `default` is mandatory on every leaf; `merge ∈ { replace, append, recursive }`. Those three obligations are stated as gen-types checkers and the value of `default` is typed `any`, so verifying a field never forces what it holds. Shape violations are the definition-time error E1, which is gen-settings' own diagnostic over gen-types' predicate.
 
 ### Layers and the Fold
 

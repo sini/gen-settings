@@ -67,12 +67,9 @@ let
   # E4 — the ref's target aspect is absent from the batch. This is the batch-level resolver, the one
   # that names BOTH endpoints, so its rendering carries the source field.
   batchE4 = [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = mkDeclaration absent [ "x" ];
-        };
+    (member (mkSchema theme {
+      f = {
+        default = mkDeclaration absent [ "x" ];
       };
     }) [ ])
   ];
@@ -86,20 +83,14 @@ let
   # control assembled as its own literal could drift from the construction it is a control for; this
   # one cannot, because there is only one construction.
   terminalPathBatch = comp: [
-    (member (mkSchema {
-      aspect = theme;
-      fields = {
-        f = {
-          default = mkDeclaration terminal [ comp ];
-        };
+    (member (mkSchema theme {
+      f = {
+        default = mkDeclaration terminal [ comp ];
       };
     }) [ ])
-    (member (mkSchema {
-      aspect = terminal;
-      fields = {
-        g = {
-          default = "G";
-        };
+    (member (mkSchema terminal {
+      g = {
+        default = "G";
       };
     }) [ ])
   ];
@@ -112,12 +103,9 @@ let
   themeAlias = fx.mkAspect "theme-alias" theme.id_hash;
   dupIdentityBatch = [
     (
-      member (mkSchema {
-        aspect = theme;
-        fields = {
-          font = {
-            default = "FIRST";
-          };
+      member (mkSchema theme {
+        font = {
+          default = "FIRST";
         };
       }) [ ]
       // {
@@ -125,12 +113,9 @@ let
       }
     )
     (
-      member (mkSchema {
-        aspect = themeAlias;
-        fields = {
-          font = {
-            default = "SECOND";
-          };
+      member (mkSchema themeAlias {
+        font = {
+          default = "SECOND";
         };
       }) [ ]
       // {
@@ -144,12 +129,9 @@ let
   # the cell's answer would be about the display keys colliding, not about identity.
   distinctIdentitySameKeysBatch = [
     (
-      member (mkSchema {
-        aspect = theme;
-        fields = {
-          font = {
-            default = "FIRST";
-          };
+      member (mkSchema theme {
+        font = {
+          default = "FIRST";
         };
       }) [ ]
       // {
@@ -157,12 +139,9 @@ let
       }
     )
     (
-      member (mkSchema {
-        aspect = terminal;
-        fields = {
-          font = {
-            default = "SECOND";
-          };
+      member (mkSchema terminal {
+        font = {
+          default = "SECOND";
         };
       }) [ ]
       // {
@@ -180,18 +159,11 @@ let
   # its own literal could drift from the construction it controls; this one cannot.
   substSubject =
     value:
-    resolveOne {
-      schema = mkSchema {
-        aspect = theme;
-        fields = {
-          f = {
-            default = value;
-          };
-        };
+    resolveOne { resolveRef = _: "RESOLVED"; } (mkSchema theme {
+      f = {
+        default = value;
       };
-      layers = [ ];
-      resolveRef = _: "RESOLVED";
-    };
+    }) [ ];
   refToTerminal = mkDeclaration terminal [ "g" ];
   oneFn = substSubject (_: refToTerminal);
   oneData = substSubject refToTerminal;
@@ -250,12 +222,9 @@ in
       # E1 — a dotted field name. Eager and name-level: `mkSchema` refuses at WHNF, so the call is
       # the force point.
       test-e1-dotted-key-message = {
-        expr = mkSchema {
-          aspect = theme;
-          fields = {
-            "a.b" = {
-              default = 1;
-            };
+        expr = mkSchema theme {
+          "a.b" = {
+            default = 1;
           };
         };
         expectedError = {
@@ -268,12 +237,9 @@ in
       # `.strategies.x` is the cheapest read that runs `normField` on `x`.
       test-e1-missing-default-message = {
         expr =
-          (mkSchema {
-            aspect = theme;
-            fields = {
-              x = {
-                merge = "replace";
-              };
+          (mkSchema theme {
+            x = {
+              merge = "replace";
             };
           }).strategies.x;
         expectedError = {
@@ -287,13 +253,10 @@ in
       # the one message whose text a consumer reads as documentation.
       test-e1-bad-merge-message = {
         expr =
-          (mkSchema {
-            aspect = theme;
-            fields = {
-              x = {
-                default = 1;
-                merge = "bogus";
-              };
+          (mkSchema theme {
+            x = {
+              default = 1;
+              merge = "bogus";
             };
           }).strategies.x;
         expectedError = {
@@ -307,7 +270,7 @@ in
       # field-blind resolver still refuses, still names the target, and drops the `.f` — which is the
       # byte this cell exists to hold.
       test-e4-target-absent-message = {
-        expr = (resolveAll { batch = batchE4; }).value.theme.f;
+        expr = (resolveAll batchE4).value.theme.f;
         expectedError = {
           type = "ThrownError";
           msg = "^gen-settings: unresolved ref \\(E4\\): aspect\\(theme#a1b2c3d4\\)\\.f references aspect\\(absent#99998888\\) which is not present in the batch$";
@@ -319,17 +282,11 @@ in
       # renders two. Two texts share the code; a golden for either says nothing about the other.
       test-e4-no-resolver-message = {
         expr =
-          (resolveOne {
-            schema = mkSchema {
-              aspect = theme;
-              fields = {
-                f = {
-                  default = mkDeclaration terminal [ "g" ];
-                };
-              };
+          (resolveOne { } (mkSchema theme {
+            f = {
+              default = mkDeclaration terminal [ "g" ];
             };
-            layers = [ ];
-          }).value.f;
+          }) [ ]).value.f;
         expectedError = {
           type = "ThrownError";
           msg = "^gen-settings: unresolved ref \\(E4\\): no resolveRef supplied to resolveOne for target aspect\\(terminal#e5f6a7b8\\)$";
@@ -340,7 +297,7 @@ in
       # target endpoint renders a PATH, so this one message exercises two different arms of
       # `renderAddress` in two positions, and the golden pins which is which.
       test-e5-bad-path-message = {
-        expr = (resolveAll { batch = batchE5; }).value.theme.f;
+        expr = (resolveAll batchE5).value.theme.f;
         expectedError = {
           type = "ThrownError";
           msg = "^gen-settings: bad ref path \\(E5\\): aspect\\(theme#a1b2c3d4\\)\\.f -> aspect\\(terminal#e5f6a7b8\\)\\.nope: component 'nope' not present in the resolved value$";
@@ -358,7 +315,7 @@ in
       # produces refusals more readily, not less. That is the failure mode a refusal suite invites,
       # and the only cell that can see it is one that requires an answer.
       test-control-e5-construction-with-corrected-path-resolves = {
-        expr = (resolveAll { batch = terminalPathBatch "g"; }).value.theme.f;
+        expr = (resolveAll (terminalPathBatch "g")).value.theme.f;
         expected = "G";
       };
     };
@@ -378,7 +335,7 @@ in
     # arm from the pre-existing display-key one. The byte goldens below are what can.
     flake.testsError.identity-collapse = {
       test-e7-duplicate-identity-message = {
-        expr = (resolveAll { batch = dupIdentityBatch; }).value;
+        expr = (resolveAll dupIdentityBatch).value;
         expectedError = {
           type = "ThrownError";
           msg = "^gen-settings: duplicate batch identity \\(E7\\): 'a1b2c3d4' shared by 'theme' \\(aspect\\(theme#a1b2c3d4\\)\\) and 'theme2' \\(aspect\\(theme-alias#a1b2c3d4\\)\\)$";
@@ -388,7 +345,7 @@ in
       # LIVE CONTROL, same run: the identical two display keys, DISTINCT identities, resolve
       # cleanly — the plumbing works, and the cell above's refusal is about identity, not keys.
       test-control-distinct-identities-same-display-keys-resolve = {
-        expr = (resolveAll { batch = distinctIdentitySameKeysBatch; }).value;
+        expr = (resolveAll distinctIdentitySameKeysBatch).value;
         expected = {
           theme = {
             font = "FIRST";
@@ -402,7 +359,7 @@ in
       # BOTH gated accessors, not just the one the fixture above happens to read — same
       # colliding construction, `.provenance` forced instead of `.value`.
       test-e7-duplicate-identity-provenance-also-refuses = {
-        expr = (resolveAll { batch = dupIdentityBatch; }).provenance;
+        expr = (resolveAll dupIdentityBatch).provenance;
         expectedError = {
           type = "ThrownError";
           msg = "^gen-settings: duplicate batch identity \\(E7\\): 'a1b2c3d4' shared by 'theme' \\(aspect\\(theme#a1b2c3d4\\)\\) and 'theme2' \\(aspect\\(theme-alias#a1b2c3d4\\)\\)$";
@@ -511,206 +468,211 @@ in
       };
     };
 
-    # THE DOOR-CHECK BYTES (den-hoag-7gp66 P1) — R6's naming, pinned per door. `ci/tests/door-checks.nix`
-    # pins that each door's violations are CATCHABLE; a boolean cannot see WHICH refusal fired, so
-    # WHICH is pinned here, one golden per violation type per door, in gen-prelude's own goldens'
-    # style (`gen-prelude/ci/tests/door.nix`): `[.]` for a literal dot, `[(]`/`[)]` for literal
-    # parens — never `\.`/`\(` — so the pattern reads as the message with its metacharacters
-    # neutralised rather than as a second, escaped copy of it.
+    # THE DOOR-CHECK BYTES (den-hoag-7gp66 P2) — R6's naming, pinned per door step. `ci/tests/door-checks.nix`
+    # pins that each step's violations are refused catchably AT ITS OWN APPLICATION; a boolean cannot
+    # see WHICH refusal fired, so WHICH is pinned here, composed through gen-prelude's own `refusals`
+    # with this library's literal door, fields and accepted set.
     #
-    # RECORD doors (`mkSchema`, `resolveAll`) carry only the missing-field golden: an unknown field
-    # is R5's admitted case, and `ci/tests/door-checks.nix` already pins that it does not throw —
-    # there is no message to pin for a call that answers.
+    # The OPTIONS steps carry the unknown-option golden and the old one-record shape's (its first
+    # field, by name order, is not an option). The keyed RECORD steps behind an options step carry the
+    # missing-field golden and the option-given-on-the-record golden (`optionsStep`, G10). `mkSchema`
+    # and `resolveAll` are positional (rule 4) and carry no golden: their arity is structural.
     flake.testsError.door-checks = {
-      test-mkschema-missing-required-field-message = {
-        expr = mkSchema { aspect = theme; };
-        expectedError = {
-          type = "ThrownError";
-          msg = (
-            "^"
-            + escapeRegex (refusals.missingField "gen-settings.mkSchema" [ "aspect" "fields" ] "fields")
-            + "$"
-          );
-        };
-      };
-
-      test-resolveall-missing-required-field-message = {
-        expr = resolveAll { };
-        expectedError = {
-          type = "ThrownError";
-          msg = (
-            "^" + escapeRegex (refusals.missingField "gen-settings.resolveAll" [ "batch" ] "batch") + "$"
-          );
-        };
-      };
-
-      test-renderaddress-missing-required-field-message = {
-        expr = renderAddress { field = "f"; };
-        expectedError = {
-          type = "ThrownError";
-          msg = (
-            "^" + escapeRegex (refusals.missingField "gen-settings.renderAddress" [ "aspect" ] "aspect") + "$"
-          );
-        };
-      };
       test-renderaddress-unknown-option-message = {
-        expr = renderAddress {
-          aspect = theme;
-          zzsettl3xq = 1;
-        };
+        expr = renderAddress { zzsettl3xq = 1; } theme;
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
             "^"
-            + escapeRegex (
-              refusals.unknownOption "gen-settings.renderAddress" [ "aspect" "field" "path" ] "zzsettl3xq"
-            )
-            + "$"
-          );
+            + escapeRegex (refusals.unknownOption "gen-settings.renderAddress" [ "field" "path" ] "zzsettl3xq")
+            + "$";
         };
       };
-
-      test-resolveone-missing-required-field-message = {
-        expr = resolveOne { layers = [ ]; };
+      test-renderaddress-old-one-record-shape-message = {
+        expr = renderAddress { aspect = theme; };
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
             "^"
-            + escapeRegex (refusals.missingField "gen-settings.resolveOne" [ "schema" "layers" ] "schema")
-            + "$"
-          );
+            + escapeRegex (refusals.unknownOption "gen-settings.renderAddress" [ "field" "path" ] "aspect")
+            + "$";
         };
       };
       test-resolveone-unknown-option-message = {
-        expr = resolveOne {
-          schema = mkSchema {
-            aspect = theme;
-            fields = { };
-          };
-          layers = [ ];
-          zzsettl3xq = 1;
-        };
+        expr = resolveOne { zzsettl3xq = 1; };
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
             "^"
             + escapeRegex (
-              refusals.unknownOption "gen-settings.resolveOne" [
-                "schema"
-                "layers"
-                "resolveRef"
-                "strict"
-              ] "zzsettl3xq"
+              refusals.unknownOption "gen-settings.resolveOne" [ "resolveRef" "strict" ] "zzsettl3xq"
             )
-            + "$"
-          );
+            + "$";
         };
       };
-
-      test-injectaspectsettings-missing-required-field-message = {
-        expr = injectAspectSettings {
-          aspect = theme;
-          classContent = { };
+      test-resolveone-old-one-record-shape-message = {
+        expr = resolveOne {
+          schema = mkSchema theme { };
+          layers = [ ];
         };
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
             "^"
-            + escapeRegex (
-              refusals.missingField "gen-settings.injectAspectSettings" [
-                "aspect"
-                "classContent"
-                "settings"
-              ] "settings"
-            )
-            + "$"
-          );
+            + escapeRegex (refusals.unknownOption "gen-settings.resolveOne" [ "resolveRef" "strict" ] "layers")
+            + "$";
         };
       };
       test-injectaspectsettings-unknown-option-message = {
-        expr = injectAspectSettings {
-          aspect = theme;
-          classContent = { };
-          settings = { };
-          zzsettl3xq = 1;
-        };
+        expr = injectAspectSettings { zzsettl3xq = 1; };
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
             "^"
             + escapeRegex (
               refusals.unknownOption "gen-settings.injectAspectSettings" [
-                "aspect"
-                "classContent"
-                "settings"
                 "settingsKey"
                 "bindings"
                 "contracts"
                 "provenance"
               ] "zzsettl3xq"
             )
-            + "$"
-          );
+            + "$";
         };
       };
-
-      test-assemblehost-missing-required-field-message = {
-        expr = assembleHost {
-          entity = axon;
-          class = nixos;
+      test-injectaspectsettings-old-one-record-shape-message = {
+        expr = injectAspectSettings {
+          aspect = theme;
+          classContent = { };
+          settings = { };
         };
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
             "^"
             + escapeRegex (
-              refusals.missingField "gen-settings.assembleHost" [ "entity" "class" "aspects" ] "aspects"
+              refusals.unknownOption "gen-settings.injectAspectSettings" [
+                "settingsKey"
+                "bindings"
+                "contracts"
+                "provenance"
+              ] "aspect"
             )
-            + "$"
-          );
+            + "$";
+        };
+      };
+      test-injectaspectsettings-missing-record-field-message = {
+        expr = injectAspectSettings { } { aspect = theme; };
+        expectedError = {
+          type = "ThrownError";
+          msg =
+            "^"
+            + escapeRegex (
+              refusals.missingField "gen-settings.injectAspectSettings" [ "aspect" "settings" ] "settings"
+            )
+            + "$";
+        };
+      };
+      test-injectaspectsettings-option-on-the-record-message = {
+        expr = injectAspectSettings { } {
+          aspect = theme;
+          settings = { };
+          settingsKey = "k";
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg =
+            "^"
+            + escapeRegex (
+              refusals.guardedField "gen-settings.injectAspectSettings" "gen-settings.injectAspectSettings"
+                "settingsKey"
+            )
+            + "$";
         };
       };
       test-assemblehost-unknown-option-message = {
+        expr = assembleHost { zzsettl3xq = 1; };
+        expectedError = {
+          type = "ThrownError";
+          msg =
+            "^"
+            + escapeRegex (refusals.unknownOption "gen-settings.assembleHost" [ "bindings" ] "zzsettl3xq")
+            + "$";
+        };
+      };
+      test-assemblehost-old-one-record-shape-message = {
         expr = assembleHost {
           entity = axon;
           class = nixos;
           aspects = [ ];
-          zzsettl3xq = 1;
         };
         expectedError = {
           type = "ThrownError";
-          msg = (
+          msg =
+            "^"
+            + escapeRegex (refusals.unknownOption "gen-settings.assembleHost" [ "bindings" ] "aspects")
+            + "$";
+        };
+      };
+      test-assemblehost-missing-record-field-message = {
+        expr = assembleHost { } { class = nixos; };
+        expectedError = {
+          type = "ThrownError";
+          msg =
+            "^"
+            + escapeRegex (refusals.missingField "gen-settings.assembleHost" [ "class" "aspects" ] "aspects")
+            + "$";
+        };
+      };
+      test-assemblehost-option-on-the-record-message = {
+        expr = assembleHost { } {
+          class = nixos;
+          aspects = [ ];
+          bindings = { };
+        };
+        expectedError = {
+          type = "ThrownError";
+          msg =
             "^"
             + escapeRegex (
-              refusals.unknownOption "gen-settings.assembleHost" [
-                "entity"
-                "class"
-                "aspects"
-                "bindings"
-              ] "zzsettl3xq"
+              refusals.guardedField "gen-settings.assembleHost" "gen-settings.assembleHost" "bindings"
             )
-            + "$"
-          );
+            + "$";
+        };
+      };
+      test-assemblehost-element-missing-field-message = {
+        expr = assembleHost { } {
+          class = nixos;
+          aspects = [
+            {
+              aspect = theme;
+              classContent = { };
+            }
+          ];
+        } axon;
+        expectedError = {
+          type = "ThrownError";
+          msg =
+            "^"
+            + escapeRegex (
+              refusals.missingField "gen-settings.assembleHost" [ "aspect" "classContent" "settings" ] "settings"
+            )
+            + "$";
         };
       };
 
-      # LIVE CONTROL, same run, same output: a well-formed call on each door class answers rather
-      # than throwing — the vacuity every cell above asserting a refusal invites, discharged here
-      # for the RECORD arm (`mkSchema`) and the MIXED arm (`assembleHost`) alike.
+      # LIVE CONTROL, same run, same output: a well-formed call answers rather than throwing — the
+      # vacuity every cell above asserting a refusal invites, discharged here for a positional entry
+      # (`mkSchema`) and a three-step door (`assembleHost`) alike.
       test-control-mkschema-well-formed-call-answers = {
-        expr =
-          (mkSchema {
-            aspect = theme;
-            fields = { };
-          }).aspect.name;
+        expr = (mkSchema theme { }).aspect.name;
         expected = "theme";
       };
       test-control-assemblehost-well-formed-call-answers = {
-        expr = assembleHost {
-          entity = axon;
+        expr = assembleHost { } {
           class = nixos;
           aspects = [ ];
-        };
+        } axon;
         expected = { };
       };
     };

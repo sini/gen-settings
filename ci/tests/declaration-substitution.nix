@@ -25,55 +25,41 @@ let
   sentinelRef = { aspect, path }: throw "resolveRef called — should not happen";
 
   # ── ref in a default, no overriding layer ──
-  schemaDefaultRef = mkSchema {
-    aspect = fx.aspects.terminal;
-    fields = {
-      font = {
-        default = mkDeclaration theme [
-          "font"
-          "mono"
-        ];
-      };
+  schemaDefaultRef = mkSchema fx.aspects.terminal {
+    font = {
+      default = mkDeclaration theme [
+        "font"
+        "mono"
+      ];
     };
   };
-  resDefaultRef = resolveOne {
-    schema = schemaDefaultRef;
-    layers = [ ];
-    inherit resolveRef;
-  };
+  resDefaultRef = resolveOne { inherit resolveRef; } schemaDefaultRef [ ];
 
   # ── ref in a layer value, deep + list element under append ──
-  schemaDeep = mkSchema {
-    aspect = fx.aspects.terminal;
-    fields = {
-      cfg = {
-        default = {
-          k = "base";
-        };
-      };
-      ports = {
-        default = [ ];
-        merge = "append";
+  schemaDeep = mkSchema fx.aspects.terminal {
+    cfg = {
+      default = {
+        k = "base";
       };
     };
+    ports = {
+      default = [ ];
+      merge = "append";
+    };
   };
-  resDeep = resolveOne {
-    schema = schemaDeep;
-    layers = [
-      (fx.mkLayer {
-        value = {
-          cfg = {
-            k = mkDeclaration theme [ "font" ];
-          }; # deep inside an attrset value
-          ports = [
-            (mkDeclaration theme [ "p1" ])
-            7
-          ]; # ref as a list element
-        };
-      })
-    ];
-    inherit resolveRef;
-  };
+  resDeep = resolveOne { inherit resolveRef; } schemaDeep [
+    (fx.mkLayer {
+      value = {
+        cfg = {
+          k = mkDeclaration theme [ "font" ];
+        }; # deep inside an attrset value
+        ports = [
+          (mkDeclaration theme [ "p1" ])
+          7
+        ]; # ref as a list element
+      };
+    })
+  ];
   # The same fold with refs pre-substituted — L3 equivalence target.
   resDeepPre = foldLayers {
     inherit (schemaDeep) strategies defaults;
@@ -91,52 +77,44 @@ let
   };
 
   # ── shadowed ref under replace: the default ref is beaten by a concrete layer ──
-  schemaShadow = mkSchema {
-    aspect = fx.aspects.terminal;
-    fields = {
-      font = {
-        default = mkDeclaration fx.aspects.absent [ "gone" ];
-      };
+  schemaShadow = mkSchema fx.aspects.terminal {
+    font = {
+      default = mkDeclaration fx.aspects.absent [ "gone" ];
     };
   };
-  resShadow = resolveOne {
-    schema = schemaShadow;
-    layers = [
-      (fx.mkLayer {
-        rendered = "host";
-        value = {
-          font = "concrete";
-        };
-      })
-    ];
-    resolveRef = sentinelRef; # never called: the winning value carries no ref
-  };
+  resShadow =
+    resolveOne
+      {
+        resolveRef = sentinelRef; # never called: the winning value carries no ref
+      }
+      schemaShadow
+      [
+        (fx.mkLayer {
+          rendered = "host";
+          value = {
+            font = "concrete";
+          };
+        })
+      ];
 
   # ── surviving ref under recursive at a sub-key ──
-  schemaRec = mkSchema {
-    aspect = fx.aspects.terminal;
-    fields = {
-      opts = {
-        default = {
-          a = 1;
-        };
-        merge = "recursive";
+  schemaRec = mkSchema fx.aspects.terminal {
+    opts = {
+      default = {
+        a = 1;
       };
+      merge = "recursive";
     };
   };
-  resRec = resolveOne {
-    schema = schemaRec;
-    layers = [
-      (fx.mkLayer {
-        value = {
-          opts = {
-            b = mkDeclaration theme [ "x" ];
-          };
+  resRec = resolveOne { inherit resolveRef; } schemaRec [
+    (fx.mkLayer {
+      value = {
+        opts = {
+          b = mkDeclaration theme [ "x" ];
         };
-      })
-    ];
-    inherit resolveRef;
-  };
+      };
+    })
+  ];
 in
 {
   flake.tests.declaration-substitution = {

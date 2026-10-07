@@ -69,7 +69,7 @@ let
     concatStringsSep
     ;
   inherit (declaration) fieldDeclarationsIn;
-  inherit (display) renderAddress;
+  inherit (display) renderAt;
 
   # Internal graph key — id_hash + field. Identity law: keys are id_hash-based, names are
   # display only. The field component is what keeps mutually-referring aspects from refusing:
@@ -87,7 +87,7 @@ let
       renderCycle =
         cyc:
         let
-          addrs = map (a: renderAddress { inherit (a) aspect field; }) cyc;
+          addrs = map (a: renderAt { inherit (a) aspect field; }) cyc;
         in
         concatStringsSep " -> " (addrs ++ [ (head addrs) ]);
     in

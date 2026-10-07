@@ -31,7 +31,7 @@ let
     seq
     ;
   inherit (declaration) isFieldDeclaration fieldDeclarationsIn;
-  inherit (display) renderAddress shortHash;
+  inherit (display) renderAt shortHash;
   inherit (graph) refGraph assertAcyclic;
 
   # The ground types of Nix's value language: the leaves substitution returns untouched. `set` and
@@ -89,7 +89,7 @@ let
   #   here and `colors.1` there. The field is also the coordinate E2, E4 and E5 already blame.
   refuse =
     at: v:
-    throw "gen-settings: cannot substitute into a value of type '${typeOf v}': ${renderAddress at} — substitution ranges over the same data the ref scan derives the dependency graph from, and that scan refuses this position rather than treating it as a leaf, so a value produced here would come from an input no dependency edge was ever derived over";
+    throw "gen-settings: cannot substitute into a value of type '${typeOf v}': ${renderAt at} — substitution ranges over the same data the ref scan derives the dependency graph from, and that scan refuses this position rather than treating it as a leaf, so a value produced here would come from an input no dependency edge was ever derived over";
 
   substDeep =
     resolve: at: v:
@@ -175,7 +175,7 @@ let
             v = head violations;
           in
           throw "gen-settings: undeclared field (E2): layer '${v.rendered}' contributes field '${v.field}' not declared by ${
-            renderAddress { inherit (v) aspect; }
+            renderAt { inherit (v) aspect; }
           }"
         else
           x;
@@ -189,68 +189,55 @@ in
 {
   inherit substDeep;
 
-  # resolveOne { schema; layers; resolveRef ?; strict ? true } -> { value; provenance; }
+  # resolveOne { resolveRef ?; strict ? true; } schema layers -> { value; provenance; }
   # Standalone resolver: takes an external address-resolver (default throws E4). Rich batch-level
   # ref addressing (E4/E5) lives in resolveAll, where the batch/graph context exists.
   #
-  # MIXED class (den-hoag-7gp66 P1): closed over the whole set — transitional, per §v1.2, until P2
-  # moves the options off the record.
+  # OPTIONS FIRST, THEN THE OPERANDS (den-hoag-7gp66 P2, rules 2 and 4): `resolveRef` and `strict`
+  # leave for one closed options set, a `prelude.door` refused by name and catchably at `resolveOne
+  # opts`'s own WHNF. The schema is configuration and the layers are the subject folded against it,
+  # so `resolveOne { } schema` is a resolver mapped over layer stacks.
   resolveOne =
-    args:
-    let
-      checked =
-        prelude.checkOptions "gen-settings.resolveOne"
-          [
-            "schema"
-            "layers"
-            "resolveRef"
-            "strict"
-          ]
-          (
-            prelude.checkRequired "gen-settings.resolveOne" [
-              "schema"
-              "layers"
-            ] args
-          );
-      schema = checked.schema;
-      layers = checked.layers;
-      resolveRef =
-        checked.resolveRef or (
-          {
-            aspect,
-            path,
-          }:
-          throw "gen-settings: unresolved ref (E4): no resolveRef supplied to resolveOne for target ${
-            renderAddress { inherit aspect; }
-          }"
-        );
-      strict = checked.strict or true;
-      # Standalone: one resolver serves every field, so the field index is discarded here. The
-      # batch resolver in resolveAll is the one that uses it.
-      m = foldMember {
-        inherit schema layers strict;
-        resolverFor = _field: resolveRef;
-      };
-    in
-    # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, so its own
-    # WHNF forced neither field — checkOptions/checkRequired sat unread until a caller happened to
-    # touch `.value` or `.provenance`, admitting a bad record at application (gen-memo eed0685's
-    # defect class: a check that fires only behind a later read). `checked` is cheap to force
-    # (structural only, R6) and this is the same idiom `mkSchema`'s `seq dotCheck` and
-    # `assembleHost`'s `seq classOk (seq entityOk …)` already use to fire their own door check at
-    # first force of the result.
-    seq checked {
-      value = mapAttrs (
-        field: v:
-        substDeep resolveRef {
-          inherit (schema) aspect;
-          inherit field;
-        } v
-      ) m.rawValue;
-      inherit (m) provenance;
-    };
+    prelude.door
+      {
+        name = "gen-settings.resolveOne";
+        optional = [
+          "resolveRef"
+          "strict"
+        ];
+      }
+      (
+        o: schema: layers:
+        let
+          resolveRef =
+            o.resolveRef or (
+              {
+                aspect,
+                path,
+              }:
+              throw "gen-settings: unresolved ref (E4): no resolveRef supplied to resolveOne for target ${renderAt { inherit aspect; }}"
+            );
+          strict = o.strict or true;
+          # Standalone: one resolver serves every field, so the field index is discarded here. The
+          # batch resolver in resolveAll is the one that uses it.
+          m = foldMember {
+            inherit schema layers strict;
+            resolverFor = _field: resolveRef;
+          };
+        in
+        {
+          value = mapAttrs (
+            field: v:
+            substDeep resolveRef {
+              inherit (schema) aspect;
+              inherit field;
+            } v
+          ) m.rawValue;
+          inherit (m) provenance;
+        }
+      );
 
-  # resolveAll { batch } -> { value; provenance; graph; }
+  # resolveAll batch -> { value; provenance; graph; }
   #   batch = [ { schema; layers; key ? <aspect name>; strict ? true; } ]
   # Strict in structure, lazy in resolution: first force runs the E7 checks — duplicate display
   # key AND duplicate batch identity — and the conservative graph acyclicity check (L8/L17) —
@@ -258,13 +245,11 @@ in
   # knot-ties by id_hash; laziness supplies evaluation order, static acyclicity guarantees
   # productivity (no toposort needed or performed).
   #
-  # RECORD class (den-hoag-7gp66 P1, R5): `checkRequired` refuses a missing `batch` by name,
-  # catchably, and admits an extra field (R5's stated price).
+  # POSITIONAL (den-hoag-7gp66 P2, rule 4): the one required field is the operand itself, so its
+  # arity is structural and the P1 `checkRequired` retires.
   resolveAll =
-    args:
+    batch:
     let
-      checked = prelude.checkRequired "gen-settings.resolveAll" [ "batch" ] args;
-      batch = checked.batch;
       keyed = map (m: m // { _key = m.key or m.schema.aspect.name; }) batch;
       keys = map (m: m._key) keyed;
       counts = foldl' (acc: k: acc // { ${k} = (acc.${k} or 0) + 1; }) { } keys;
@@ -319,11 +304,11 @@ in
         in
         if entry == null then
           throw "gen-settings: unresolved ref (E4): ${
-            renderAddress {
+            renderAt {
               aspect = sourceAspect;
               field = sourceField;
             }
-          } references ${renderAddress { inherit aspect; }} which is not present in the batch"
+          } references ${renderAt { inherit aspect; }} which is not present in the batch"
         else
           walkPath sourceAspect sourceField aspect path (resolvedValueOf aspect.id_hash);
 
@@ -335,12 +320,12 @@ in
             acc.${comp}
           else
             throw "gen-settings: bad ref path (E5): ${
-              renderAddress {
+              renderAt {
                 aspect = sourceAspect;
                 field = sourceField;
               }
             } -> ${
-              renderAddress {
+              renderAt {
                 aspect = targetAspect;
                 inherit path;
               }
@@ -372,18 +357,13 @@ in
         else if dupIdentities != [ ] then
           let
             h = head dupIdentities;
-            culprits = map (m: "'${m._key}' (${renderAddress { aspect = m.schema.aspect; }})") byIdentity.${h};
+            culprits = map (m: "'${m._key}' (${renderAt { aspect = m.schema.aspect; }})") byIdentity.${h};
           in
           throw "gen-settings: duplicate batch identity (E7): '${shortHash h}' shared by ${concatStringsSep " and " culprits}"
         else
           seq checkedGraph x;
     in
-    # `seq checked` (den-hoag-7gp66 P2): the door's return was a bare attrset literal, routing
-    # `checked` (the `batch` required-field check) only through `keyed`/`theGraph`/`raws`, each
-    # itself lazy — so a batch missing `batch` sailed through `resolveAll`'s own application and
-    # was admitted until a caller forced `.value`, `.provenance` or `.graph`. Same fix as
-    # `resolveOne` and the same idiom `mkSchema`/`assembleHost` already use.
-    seq checked {
+    {
       value = gate (
         listToAttrs (
           map (m: {

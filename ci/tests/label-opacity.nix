@@ -12,16 +12,13 @@ let
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   foldLayersTraced = genAlgebra.record.foldLayersTraced;
 
-  schema = mkSchema {
-    aspect = fx.aspects.firewall;
-    fields = {
-      "allowed-tcp" = {
-        default = [ 22 ];
-        merge = "append";
-      };
-      hostname = {
-        default = "unset";
-      };
+  schema = mkSchema fx.aspects.firewall {
+    "allowed-tcp" = {
+      default = [ 22 ];
+      merge = "append";
+    };
+    hostname = {
+      default = "unset";
     };
   };
 
@@ -51,14 +48,8 @@ let
     })
   ];
 
-  a = resolveOne {
-    inherit schema;
-    layers = labelledLayers;
-  };
-  b = resolveOne {
-    inherit schema;
-    layers = relabelledLayers;
-  };
+  a = resolveOne { } schema labelledLayers;
+  b = resolveOne { } schema relabelledLayers;
 
   # gen-algebra pinning: same values, labels are ints / attrsets / null → value byte-identical.
   strategies = {

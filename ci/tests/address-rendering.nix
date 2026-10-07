@@ -31,16 +31,13 @@ in
   flake.tests.address-rendering = {
     # base — an aspect alone, no field and no path. The rendering E4 gives its target endpoint.
     test-render-address-base = {
-      expr = renderAddress { aspect = absent; };
+      expr = renderAddress { } absent;
       expected = "aspect(absent#99998888)";
     };
 
     # field arm — the source endpoint E4 and E5 both name.
     test-render-address-field = {
-      expr = renderAddress {
-        aspect = theme;
-        field = "f";
-      };
+      expr = renderAddress { field = "f"; } theme;
       expected = "aspect(theme#a1b2c3d4).f";
     };
 
@@ -51,17 +48,13 @@ in
     # was before this file — rendered by shipped code, pinned by nothing.
     test-render-address-path = {
       expr = {
-        oneComponent = renderAddress {
-          aspect = terminal;
-          path = [ "nope" ];
-        };
+        oneComponent = renderAddress { path = [ "nope" ]; } terminal;
         twoComponents = renderAddress {
-          aspect = terminal;
           path = [
             "nope"
             "deeper"
           ];
-        };
+        } terminal;
       };
       expected = {
         oneComponent = "aspect(terminal#e5f6a7b8).nope";

@@ -21,26 +21,23 @@ let
   fx = import ./_fixtures/fixtures.nix { inherit lib; };
   foldLayers = genAlgebra.record.foldLayers;
 
-  schema = mkSchema {
-    aspect = fx.aspects.firewall;
-    fields = {
-      "allowed-tcp" = {
-        default = [ 22 ];
-        merge = "append";
+  schema = mkSchema fx.aspects.firewall {
+    "allowed-tcp" = {
+      default = [ 22 ];
+      merge = "append";
+    };
+    hostname = {
+      default = "unset";
+    }; # replace (implicit)
+    opts = {
+      default = {
+        a = 1;
       };
-      hostname = {
-        default = "unset";
-      }; # replace (implicit)
-      opts = {
-        default = {
-          a = 1;
-        };
-        merge = "recursive";
-      };
-      "empty-list" = {
-        default = [ ];
-        merge = "append";
-      };
+      merge = "recursive";
+    };
+    "empty-list" = {
+      default = [ ];
+      merge = "append";
     };
   };
 
@@ -70,17 +67,14 @@ let
     })
   ];
 
-  resolved = resolveOne { inherit schema layers; };
+  resolved = resolveOne { } schema layers;
   expectedFold = foldLayers {
     inherit (schema) strategies defaults;
     layers = map (l: l.value) layers;
   };
 
   # A permuted-layer variant, to observe the last-wins boundary (also used by T10).
-  swapped = resolveOne {
-    inherit schema;
-    layers = lib.reverseList layers;
-  };
+  swapped = resolveOne { } schema (lib.reverseList layers);
 in
 {
   flake.tests.value-parity = {
@@ -124,17 +118,11 @@ in
     # L2 — a ref-free single-default field (no layers) is just its default.
     test-default-only = {
       expr =
-        (resolveOne {
-          schema = mkSchema {
-            aspect = fx.aspects.theme;
-            fields = {
-              font = {
-                default = "mono";
-              };
-            };
+        (resolveOne { } (mkSchema fx.aspects.theme {
+          font = {
+            default = "mono";
           };
-          layers = [ ];
-        }).value;
+        }) [ ]).value;
       expected = {
         font = "mono";
       };

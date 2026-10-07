@@ -142,10 +142,7 @@ let
 
   g = refGraph [
     {
-      schema = mkSchema {
-        aspect = A;
-        inherit fields;
-      };
+      schema = mkSchema A fields;
       layers = [ ];
     }
   ];
