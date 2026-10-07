@@ -72,11 +72,28 @@
 }:
 let
   prelude = import srcs.gen-prelude;
-  algebra = import srcs.gen-algebra { inherit prelude; };
-  bind = import srcs.gen-bind { inherit prelude; };
-  graphLib = import srcs.gen-graph { inherit prelude; };
-  typesLib = import srcs.gen-types { inherit prelude; };
-  schemaLib = import srcs.gen-schema { inherit prelude algebra; };
+  # Each sibling is applied to the formals it declares, out of one candidate set, so a library that
+  # gains a sibling formal is built without editing this file; a bare-value `lib` (gen-algebra,
+  # gen-identity) is taken as it stands.
+  call =
+    v:
+    if builtins.isFunction v then
+      v (
+        builtins.intersectAttrs (builtins.functionArgs v) {
+          inherit prelude algebra;
+          identity = identityLib;
+          graph = graphLib;
+        }
+      )
+    else
+      v;
+  algebra = call (import srcs.gen-algebra);
+  bind = call (import srcs.gen-bind);
+  graphLib = call (import srcs.gen-graph);
+  typesLib = call (import srcs.gen-types);
+  # The REPOSITORY ROOT's standalone shim, which resolves gen-schema's own siblings (gen-merge among
+  # them) from its lock; it takes no library formals.
+  schemaLib = import srcs.gen-schema { };
   identityLib = import srcs.gen-identity;
 
   libFn = import srcs.gen-settings;
