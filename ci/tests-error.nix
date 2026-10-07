@@ -35,9 +35,13 @@
 {
   lib,
   genSettings,
+  prelude,
   ...
 }:
 let
+  # gen-prelude's refusal text, composed with this library's own literal door, field and accepted
+  # set (den-hoag-7jltk): every assertion kept, none of gen-prelude's wording copied.
+  inherit (prelude) refusals escapeRegex;
   inherit (genSettings)
     mkDeclaration
     mkSchema
@@ -522,7 +526,11 @@ in
         expr = mkSchema { aspect = theme; };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]mkSchema: required field 'fields' is missing [(]required: 'aspect', 'fields'[)] [(]in prelude[.]checkRequired[)]$";
+          msg = (
+            "^"
+            + escapeRegex (refusals.missingField "gen-settings.mkSchema" [ "aspect" "fields" ] "fields")
+            + "$"
+          );
         };
       };
 
@@ -530,7 +538,9 @@ in
         expr = resolveAll { };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]resolveAll: required field 'batch' is missing [(]required: 'batch'[)] [(]in prelude[.]checkRequired[)]$";
+          msg = (
+            "^" + escapeRegex (refusals.missingField "gen-settings.resolveAll" [ "batch" ] "batch") + "$"
+          );
         };
       };
 
@@ -538,7 +548,9 @@ in
         expr = renderAddress { field = "f"; };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]renderAddress: required field 'aspect' is missing [(]required: 'aspect'[)] [(]in prelude[.]checkRequired[)]$";
+          msg = (
+            "^" + escapeRegex (refusals.missingField "gen-settings.renderAddress" [ "aspect" ] "aspect") + "$"
+          );
         };
       };
       test-renderaddress-unknown-option-message = {
@@ -548,7 +560,13 @@ in
         };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]renderAddress: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'aspect', 'field', 'path'[)] [(]in prelude[.]checkOptions[)]$";
+          msg = (
+            "^"
+            + escapeRegex (
+              refusals.unknownOption "gen-settings.renderAddress" [ "aspect" "field" "path" ] "zzsettl3xq"
+            )
+            + "$"
+          );
         };
       };
 
@@ -556,7 +574,11 @@ in
         expr = resolveOne { layers = [ ]; };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]resolveOne: required field 'schema' is missing [(]required: 'schema', 'layers'[)] [(]in prelude[.]checkRequired[)]$";
+          msg = (
+            "^"
+            + escapeRegex (refusals.missingField "gen-settings.resolveOne" [ "schema" "layers" ] "schema")
+            + "$"
+          );
         };
       };
       test-resolveone-unknown-option-message = {
@@ -570,7 +592,18 @@ in
         };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]resolveOne: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'schema', 'layers', 'resolveRef', 'strict'[)] [(]in prelude[.]checkOptions[)]$";
+          msg = (
+            "^"
+            + escapeRegex (
+              refusals.unknownOption "gen-settings.resolveOne" [
+                "schema"
+                "layers"
+                "resolveRef"
+                "strict"
+              ] "zzsettl3xq"
+            )
+            + "$"
+          );
         };
       };
 
@@ -581,7 +614,17 @@ in
         };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]injectAspectSettings: required field 'settings' is missing [(]required: 'aspect', 'classContent', 'settings'[)] [(]in prelude[.]checkRequired[)]$";
+          msg = (
+            "^"
+            + escapeRegex (
+              refusals.missingField "gen-settings.injectAspectSettings" [
+                "aspect"
+                "classContent"
+                "settings"
+              ] "settings"
+            )
+            + "$"
+          );
         };
       };
       test-injectaspectsettings-unknown-option-message = {
@@ -593,7 +636,21 @@ in
         };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]injectAspectSettings: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'aspect', 'classContent', 'settings', 'settingsKey', 'bindings', 'contracts', 'provenance'[)] [(]in prelude[.]checkOptions[)]$";
+          msg = (
+            "^"
+            + escapeRegex (
+              refusals.unknownOption "gen-settings.injectAspectSettings" [
+                "aspect"
+                "classContent"
+                "settings"
+                "settingsKey"
+                "bindings"
+                "contracts"
+                "provenance"
+              ] "zzsettl3xq"
+            )
+            + "$"
+          );
         };
       };
 
@@ -604,7 +661,13 @@ in
         };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]assembleHost: required field 'aspects' is missing [(]required: 'entity', 'class', 'aspects'[)] [(]in prelude[.]checkRequired[)]$";
+          msg = (
+            "^"
+            + escapeRegex (
+              refusals.missingField "gen-settings.assembleHost" [ "entity" "class" "aspects" ] "aspects"
+            )
+            + "$"
+          );
         };
       };
       test-assemblehost-unknown-option-message = {
@@ -616,7 +679,18 @@ in
         };
         expectedError = {
           type = "ThrownError";
-          msg = "^gen-settings[.]assembleHost: 'zzsettl3xq' is not an option of this door; the options are closed [(]accepted: 'entity', 'class', 'aspects', 'bindings'[)] [(]in prelude[.]checkOptions[)]$";
+          msg = (
+            "^"
+            + escapeRegex (
+              refusals.unknownOption "gen-settings.assembleHost" [
+                "entity"
+                "class"
+                "aspects"
+                "bindings"
+              ] "zzsettl3xq"
+            )
+            + "$"
+          );
         };
       };
 
