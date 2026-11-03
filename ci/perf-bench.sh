@@ -18,7 +18,7 @@ STATS=$(mktemp -d)/stats.json
 # eval ARM_LIB STACK N -> prints "<nrFunctionCalls> <nodes> <cycles>"
 run_cell() {
   local arm="$1" stack="$2" n="$3" out
-  out=$(NIX_SHOW_STATS=1 NIX_SHOW_STATS_PATH="$STATS" nix eval --impure --json --expr \
+  out=$(NIX_SHOW_STATS=1 NIX_SHOW_STATS_PATH="$STATS" nix eval "${SERIAL_EVAL[@]}" --impure --json --expr \
     "import $PERF_WORKLOADS { srcs = (import $PERF_SRCS) // { gen-settings = $arm; }; stack = \"$stack\"; n = $n; }") || {
     echo "PERF-BENCH FAIL: workload did not evaluate (arm=$arm stack=$stack n=$n)" >&2
     echo "  Either the workload is out of step with the library it measures, or a gen-* flake" >&2

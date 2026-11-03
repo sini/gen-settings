@@ -35,6 +35,13 @@
         text = ''
           export PERF_WORKLOADS=${./perf-bench.nix}
           export PERF_SRCS=${perfSrcs}
+          # The counted evaluations are serial (gen-harness `lib.serialEval`): a count is defined only for a
+          # serial run. This app's evaluator is `pkgs.nix`, which has no parallel evaluator, so the options
+          # resolve empty; they are carried anyway, so every counted run follows one rule.
+          # shellcheck disable=SC1091
+          source ${inputs.gen-harness.lib.serialEval { inherit pkgs; }}
+          serialEvalOptions "$(command -v nix-instantiate)" || exit 2
+          echo "perf-bench: serial options: ''${SERIAL_EVAL[*]:-(none)}"
         ''
         + builtins.readFile ./perf-bench.sh;
       };
